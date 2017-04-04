@@ -1,24 +1,39 @@
- //<>// //<>// //<>//
-class Map extends Map_Data {
+//<>// //<>// //<>//
+class Map {
   private int mapWidth;
   private int mapHeight;
   private ArrayList<HardBlock> map = new ArrayList<HardBlock>();
-  private PImage pImg;
-  private PGraphics pg ;
-  private PImage  pi = createImage(16,16,ARGB);
-  
-  public Map(PImage pImg, int TileSize, int MaxHorizontalTile, String strMapPath) {
-    this.TileSize = TileSize;
-    this.MaxHorizontalTile = MaxHorizontalTile;
-    this.pImg = pImg;
+  private ArrayList<PImage> lHardBlockTilesImages  = new ArrayList<PImage>();
+  //private PGraphics pg ;
+  //private PImage  pi = createImage(16, 16, ARGB);
+  private int TileSize; // taille des tuiles en pixels (carré donc 16*16)
 
 
+
+  // unique constructeur 
+  public Map(String strTileMapPath, int TileSize, int MaxTile, String strMapPath) {
+    this.TileSize = TileSize; 
+    PImage tileMapImg = loadImage(strTileMapPath);
+    int TilePerWidth = tileMapImg.width / TileSize; // nombre max de tuile par ligne en fonction de la largeur en pixel de l'image tileMap
+
+    /*  on va remplir d'image miniature "tuile" : lHardBlockTilesImages
+     la tileMap à systematiquement une largeur en pixel égale à un multiple de la taille d'une tuile
+     */
+    for (int incr1 = 0; incr1 < MaxTile; incr1++) {
+      int xSource = (incr1 % TilePerWidth) * TileSize; // position x et y dans l'image source tileMap
+      int ySource = floor(incr1 / TilePerWidth) * TileSize;
+      PImage i = createImage(TileSize, TileSize, ARGB); // on crée une image a la volée avec un canal alpha
+      i.copy(tileMapImg, xSource, ySource, TileSize, TileSize, 0, 0, TileSize, TileSize); // on copie le contenu
+      lHardBlockTilesImages.add(i); // on stocke chaque miniature...
+    }
+
+    /*
+      chargement de la map dans
+     */
     String file[] = loadStrings(strMapPath); // chaque valeur dans la liste est une ligne de texte..
     mapHeight = file.length;
     mapWidth = split(file[0], ';').length;
-    pg = createGraphics(mapWidth * TileSize, mapHeight * TileSize);
-    pi.copy(pImg,0,0,16,16,0,0,16,16);
-    
+
     for (int incr1 = 0; incr1 < mapHeight; incr1++) {
       String[] l = split(file[incr1], ";");
       for ( int incr2 = 0; incr2 < mapWidth; incr2++) {
@@ -26,61 +41,229 @@ class Map extends Map_Data {
         map.add(GetHardBlock(t));
       }
     }
-    println("done");
   }
 
 
 
-  void UpdateDisplay2(){
-    int x,y;
-    int s = map.size();
-    for (int incr1 = 0; incr1 < s; incr1++) {
-      
-      x = (incr1 % mapWidth) * TileSize;
-      y = floor(incr1 / mapWidth) * TileSize;
-      
-      image(pi,x,y);
-    }
-    
-  }
-  
   void UpdateDisplay() {
-    int t1 = millis();
     int x, y;
-    pg.beginDraw();
     int s = map.size();
     for (int incr1 = 0; incr1 < s; incr1++) {
-      //Tile t = map.get(incr1).getTileToDraw();//
-      Tile t = map.get(incr1).tiles.get(0);
+
       x = (incr1 % mapWidth) * TileSize;
       y = floor(incr1 / mapWidth) * TileSize;
-      pg.copy(pImg, t.x, t.y, TileSize, TileSize, x, y, TileSize, TileSize);
+
+      image(lHardBlockTilesImages.get(map.get(incr1).getTileToDraw()-1), x, y);
     }
-    
-    pg.endDraw();
-    int t2 = millis() - t1;
-    image(pg, 0, 0); 
-    int t3 = (millis() - t1) - t2;
-    println("Frame " + gFrameCounter + " : pg = " + t2 + ", image = " + t3);
-    
   }
+
+
+
+  /*
+  ---------------------------------------------------------------------------------------------------------------
+   ---------------------------------------------------------------------------------------------------------------
+   ---------------------------------------------------------------------------------------------------------------
+   */
+  private HardBlock GetHardBlock(int Id) {
+    HardBlock hb;
+
+    // comportement de block
+    switch (Id) {
+    case 1: 
+    case 2: // type sol
+      hb = new HardBlock(true, false, false, false);
+      break;
+    case 32 : // type escalier
+      hb = new HardBlock(false, true, false, false);
+      break;
+    default: // mur simple
+      hb = new HardBlock(false, true, true, true);
+    }
+
+    // texture du bloc 
+
+    switch (Id) {
+    case 21: // Mur Externe partie immergée (animée en 2 frames)
+    case 22:
+      hb.TileFrame = new int[]{30, 30};
+      hb.TilesID = new int[]{21, 22};
+      break;
+    case 23: // Eau
+    case 24: 
+      hb.TileFrame = new int[]{30, 30};
+      hb.TilesID = new int[]{23, 24};
+      break;
+    case 26: // racines dans l'eau
+    case 27:
+      hb.TileFrame = new int[]{30, 30};
+      hb.TilesID = new int[]{26, 27};
+      break;
+    case 48: // eau en bas de la tour (gauche)
+    case 49:
+      hb.TileFrame = new int[]{30, 30};
+      hb.TilesID = new int[]{48, 49};
+      break;
+    case 54: // eau en bas de la tour (droite)
+    case 55:
+      hb.TileFrame = new int[]{30, 30};
+      hb.TilesID = new int[]{54, 55};
+      break;
+    case 62: // coin superieur gauche de la fontaine
+    case 63:
+      hb.TileFrame = new int[]{30, 30};
+      hb.TilesID = new int[]{62, 63};
+      break;
+    case 65: // coin superieur droit de la fontaine
+    case 66:
+      hb.TileFrame = new int[]{30, 30};
+      hb.TilesID = new int[]{65, 66};
+      break;
+    case 67: // coté gauche de la fontaine
+    case 68: 
+    case 69:
+      // hb.tiles.add(new Tile(67, 30));
+      // hb.tiles.add(new Tile(68, 30));
+      // hb.tiles.add(new Tile(69, 30));
+      hb.TileFrame = new int[]{30, 30, 30};
+      hb.TilesID = new int[]{69, 68, 67};
+      break;
+    case 70: // centre de la fontaine
+    case 71: 
+    case 72:
+      hb.TileFrame = new int[]{30, 30, 30, 30};
+      hb.TilesID = new int[]{72, 71, 70, 71};
+      break;
+    case 73: // coté droit de la fontaine
+    case 74: 
+    case 75: 
+      hb.TileFrame = new int[]{30, 30, 30};
+      hb.TilesID = new int[]{75, 74, 73};
+      break;
+    case 84: //Element de porte de sortie milieu gauche
+    case 85: 
+    case 86:  
+      hb.TileFrame = new int[]{-1};
+      hb.TilesID = new int[]{84};
+      break;
+    case 87: //Element de porte de sortie bas gauche
+    case 88: 
+    case 89:
+      hb.TileFrame = new int[]{-1};
+      hb.TilesID = new int[]{87};
+      break;
+    case 90: //Element de porte de sortie milieu centre
+    case 91: 
+    case 92:
+      hb.TileFrame = new int[]{-1};
+      hb.TilesID = new int[]{90};
+      break;
+    case 93: //Element de porte de sortie milieu bas
+    case 94: 
+    case 95:
+      hb.TileFrame = new int[]{-1};
+      hb.TilesID = new int[]{93};
+      break;
+    case 96: //Element de porte de sortie milieu droite
+    case 97: 
+    case 98: 
+      hb.TileFrame = new int[]{-1};
+      hb.TilesID = new int[]{96};
+      break;
+    case 99: // Element de porte de sortie bas droite
+    case 100: 
+    case 101:
+      hb.TileFrame = new int[]{-1};
+      hb.TilesID = new int[]{99};
+      break;
+    default:
+      hb.TileFrame = new int[]{-1};
+      hb.TilesID = new int[]{Id};
+    }
+    hb.populateTileFrame();
+    return hb;
+  }
+
+
+  private class HardBlock {
+    /* 
+     Cette classe décrit les propriétés des block indestructible qui composent l'arrière plan de la map.
+     */
+    //public String description;
+    public boolean bombDrop;
+    public boolean stopFlame;
+    public boolean stopEnemy;
+    public boolean stopPlayer;
+    public int[] TileFrame;
+    public int[] TilesID;
+    public int maxFrame;
+    //public ArrayList<Tile> tiles = new ArrayList<Tile>();
+
+    public HardBlock(boolean bombDrop, boolean stopFlame, boolean stopEnemy, boolean stopPlayer) {
+      this.bombDrop = bombDrop;
+      this.stopFlame = stopFlame;
+      this.stopEnemy = stopEnemy;
+      this.stopPlayer = stopPlayer;
+    }
+
+    private void populateTileFrame() {
+      int[] t = new int[TileFrame.length];
+      for (int incr1 = 0; incr1 < TileFrame.length; incr1++) {
+        if (incr1 == 0) {
+          t[0] = TileFrame[incr1];
+        } else {
+          t[incr1] = t[incr1-1]  + TileFrame[incr1];
+        }
+        maxFrame = t[incr1];
+      }
+      TileFrame = t;
+    }
+
+    private int getTileToDraw() {
+      if (TilesID.length == 1) { // s'il n'y a qu'une seule image donc pas d'animation..
+        return TilesID[0];
+      } else {
+        int frame = (gFrameCounter % maxFrame) +1; 
+        int index = Arrays.binarySearch(TileFrame, frame);
+        if (index >= 0) {
+          return TilesID[index];
+        } else { // negative value is the conditional new entry index 
+          return TilesID[abs(index)-1];
+        }
+      }
+    }
+  }
+  /*
+  private class Tile {
+   public int Id;
+   public int duration;
+   
+   public Tile(int Id, int duration) {
+   this.Id = Id;
+   this.duration = duration;
+   }
+   */
+}
+
+
+
+
 
 /*
   void display() {
+ 
+ int x, y;
+ pg.beginDraw();
+ for (int incr1 = 0; incr1 < map.size(); incr1++) {
+ Tile t = map.get(incr1).tiles.get(0);
+ x = (incr1 % mapWidth) * TileSize;
+ y = floor(incr1 / mapWidth) * TileSize;
+ pg.copy(pImg, t.x, t.y, TileSize, TileSize, x, y, TileSize, TileSize);
+ }
+ pg.endDraw();
+ image(pg, 0, 0);
+ }
+ */
 
-    int x, y;
-    pg.beginDraw();
-    for (int incr1 = 0; incr1 < map.size(); incr1++) {
-      Tile t = map.get(incr1).tiles.get(0);
-      x = (incr1 % mapWidth) * TileSize;
-      y = floor(incr1 / mapWidth) * TileSize;
-      pg.copy(pImg, t.x, t.y, TileSize, TileSize, x, y, TileSize, TileSize);
-    }
-    pg.endDraw();
-    image(pg, 0, 0);
-  }
-  */
-}
 
 
 /* exemple de map...

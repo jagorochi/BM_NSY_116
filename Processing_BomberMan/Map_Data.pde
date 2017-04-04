@@ -3,7 +3,7 @@
 public class Map_Data {
   protected int TileSize;
   protected int MaxHorizontalTile;
-
+  
 
 
   protected HardBlock GetHardBlock(int Id) {
@@ -76,14 +76,14 @@ public class Map_Data {
       break;
     case 73: // coté droit de la fontaine
     case 74: 
-    case 75:
+    case 75: 
       hb.tiles.add(new Tile(73, 30));
       hb.tiles.add(new Tile(74, 30));
       hb.tiles.add(new Tile(75, 30));
       break;
     case 84: //Element de porte de sortie milieu gauche
     case 85: 
-    case 86:
+    case 86:  
       hb.tiles.add(new Tile(84, -1));
       break;
     case 87: //Element de porte de sortie bas gauche
@@ -155,11 +155,10 @@ public class Map_Data {
         }
         maxFrame = TileFrame[incr1];
       }
-      
     }
     
     public Tile getTileToDraw(){
-       if (!bAnimated){ //<>//
+       if (!bAnimated){ //<>// //<>//
          return tiles.get(0);
        }else{
          int frame = (gFrameCounter % maxFrame) +1; 
@@ -172,7 +171,7 @@ public class Map_Data {
        }
     }
   }
-
+  
   protected class Tile {
     public int x; // coordonnée x sur la tile_map
     public int y; // coordonnée y sur la tile_map
