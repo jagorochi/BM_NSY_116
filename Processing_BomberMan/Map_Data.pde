@@ -161,7 +161,7 @@ public class Map_Data {
        if (!bAnimated){ //<>// //<>//
          return tiles.get(0);
        }else{
-         int frame = (gFrameCounter % maxFrame) +1; 
+         int frame = (frameCount % maxFrame) +1; 
          int index = Arrays.binarySearch(TileFrame, frame);
          if (index >= 0){
            return tiles.get(index);

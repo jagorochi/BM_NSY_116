@@ -1,26 +1,39 @@
 import java.util.Arrays;
+import java.util.EnumMap;
+
 Controls gCtrl;
-int gFrameCounter = 0;
+
+int gSketchScale = 2;
+boolean gDebug;
 Map gMap;
+BomberMan gBM;
+
+void config(){
+  
+}
+void settings(){
+    int xSize = 480 * gSketchScale;
+    int ySize = 240 * gSketchScale;
+    size(xSize, ySize); // taille de la fenetre
+    noSmooth();
+    gDebug = true;
+    
+}
 
 void setup() {
-
-  frameRate(60);
-  size(480, 240); // taille de la fenetre
   gCtrl = new Controls();
-
   gMap = new Map("bomber_man_tilemap.png", 16, 101, "BomberMan_Editeur_de_niveau.csv");
-  // gMap.display();
-
-  //test();
+  gBM = new BomberMan("bomber_man_tilemap.png",94);
+  gBM.SetPlayerControl(true);
 }
 
 
 
 void draw() {
-  gFrameCounter++;
-  if (gFrameCounter % 60 == 0){e
-    println(frameRate);
-  }
+  
   gMap.UpdateDisplay();
+  gBM.displayUpdate();
+   if (gDebug){
+    text("fps : "  + round(frameRate), 10,20);
+  }
 }
