@@ -1,4 +1,5 @@
-//<>// //<>// //<>//
+ //<>//
+
 class Map {
   private int mapWidth;
   private int mapHeight;
@@ -26,10 +27,11 @@ class Map {
       i.copy(tileMapImg, xSource, ySource, TileSize, TileSize, 0, 0, TileSize, TileSize); // on copie le contenu
       lHardBlockTilesImages.add(i); // on stocke chaque miniature...
     }
-
+    
     /*
       chargement de la map dans
      */
+     
     String file[] = loadStrings(strMapPath); // chaque valeur dans la liste est une ligne de texte..
     mapHeight = file.length;
     mapWidth = split(file[0], ';').length;
@@ -48,6 +50,8 @@ class Map {
   void UpdateDisplay() {
     int x, y;
     int s = map.size();
+    pushMatrix();
+    scale(gSketchScale);
     for (int incr1 = 0; incr1 < s; incr1++) {
 
       x = (incr1 % mapWidth) * TileSize;
@@ -55,6 +59,7 @@ class Map {
 
       image(lHardBlockTilesImages.get(map.get(incr1).getTileToDraw()-1), x, y);
     }
+    popMatrix();
   }
 
 
@@ -222,7 +227,7 @@ class Map {
       if (TilesID.length == 1) { // s'il n'y a qu'une seule image donc pas d'animation..
         return TilesID[0];
       } else {
-        int frame = (gFrameCounter % maxFrame) +1; 
+        int frame = (frameCount % maxFrame) +1; 
         int index = Arrays.binarySearch(TileFrame, frame);
         if (index >= 0) {
           return TilesID[index];
