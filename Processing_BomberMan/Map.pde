@@ -1,20 +1,24 @@
- //<>//
-
+//<>// //<>//
+public class Rect {
+  int x;
+  int y;
+  int w;
+  int h;
+}
 class Map {
   private int mapWidth;
   private int mapHeight;
   private ArrayList<HardBlock> map = new ArrayList<HardBlock>();
   private ArrayList<PImage> lHardBlockTilesImages  = new ArrayList<PImage>();
-  //private PGraphics pg ;
   //private PImage  pi = createImage(16, 16, ARGB);
   private int TileSize; // taille des tuiles en pixels (carré donc 16*16)
+  private String strLevelMapInit[]; // on enregistre le contenu du level initial au cas ou si l'on doit réinitialiser la map.
 
 
-
-  // unique constructeur 
-  public Map(String strTileMapPath, int TileSize, int MaxTile, String strMapPath) {
+  // unique constructeur
+  public Map(PImage tileMapImg, int TileSize, int MaxTile, String strMapPath) {
     this.TileSize = TileSize; 
-    PImage tileMapImg = loadImage(strTileMapPath);
+    //PImage tileMapImg = loadImage(strTileMapPath);
     int TilePerWidth = tileMapImg.width / TileSize; // nombre max de tuile par ligne en fonction de la largeur en pixel de l'image tileMap
 
     /*  on va remplir d'image miniature "tuile" : lHardBlockTilesImages
@@ -27,24 +31,92 @@ class Map {
       i.copy(tileMapImg, xSource, ySource, TileSize, TileSize, 0, 0, TileSize, TileSize); // on copie le contenu
       lHardBlockTilesImages.add(i); // on stocke chaque miniature...
     }
-    
+
     /*
       chargement de la map dans
      */
-     
-    String file[] = loadStrings(strMapPath); // chaque valeur dans la liste est une ligne de texte..
-    mapHeight = file.length;
-    mapWidth = split(file[0], ';').length;
+
+    strLevelMapInit = loadStrings(strMapPath); // chaque valeur dans la liste est une ligne de texte..
+    mapHeight = strLevelMapInit.length;
+    mapWidth = split(strLevelMapInit[0], ';').length;
+
 
     for (int incr1 = 0; incr1 < mapHeight; incr1++) {
-      String[] l = split(file[incr1], ";");
+      String[] l = split(strLevelMapInit[incr1], ";");
       for ( int incr2 = 0; incr2 < mapWidth; incr2++) {
         int t = Integer.parseInt(split(l[incr2], ",")[0]);
-        map.add(GetHardBlock(t));
+        HardBlock hb = GetHardBlock(t);
+        hb.setRect(incr2 * TileSize, incr1 * TileSize, TileSize, TileSize);
+        map.add(hb);
       }
     }
   }
+  boolean IsStopPlayerBlock(int nBlock) {
+    if (gDebug) {
+      HardBlock hb = map.get(nBlock);
+      pushMatrix();
+      scale(gSketchScale);
+      stroke(255, 153, 0);
+      rect(hb.rect.x, hb.rect.y, hb.rect.h, hb.rect.w);
 
+      popMatrix();
+    }
+
+    return map.get(nBlock).stopPlayer;
+  }
+
+  boolean checkHardBlockCollision(int nBlock, Rect playerRect) {
+
+    HardBlock hb = map.get(nBlock);
+    if (gDebug) {
+
+      pushMatrix();
+      scale(gSketchScale);
+      stroke(255, 0, 0);
+      rect(hb.rect.x, hb.rect.y, hb.rect.h, hb.rect.w);
+
+      popMatrix();
+    }
+    if (!hb.stopPlayer) {
+      return true;
+    } else { 
+      return checkRectCollision(hb.rect, playerRect);
+    }
+  }
+
+  public int getXdifference(int nBlock, int x) {
+    // fonction permettant de verifier si la position x a tester (du joueur) est plus ou moins décalé au à la position x d'un bloc determiné...
+    // utile pour verifier si l'on doit déplacer le player dans un couloir
+    return map.get(nBlock).rect.x - x;
+  }
+
+  public int getYdifference(int nBlock, int y) {
+    return map.get(nBlock).rect.y - y;
+  }
+
+
+  private boolean checkRectCollision(Rect hb, Rect player) {
+    /*
+    fonction permettant de vérifier la collision entre deux "Rect"
+     ils sont ici libellés "hb" et "player" mais ça n'a aucune importance..
+     on teste deux "rectangle"...
+     */
+    return ((player.x > hb.x + hb.w)      // trop à droite
+      || (player.x + player.w < hb.x) // trop à gauche
+      || (player.y > hb.y + hb.h) // trop en bas
+      || (player.y + player.h < hb.y)) ;// trop en haut
+  }
+
+
+  public int getBlockPositionFromCoordinate(int x, int y) {
+    /*
+    Cette fonction permet de calculer le numéro de bloc de la map en fonction de coordonnées x et y.
+     utile pour recalculer la position des objets qui "bougent" et ainsi limiter les futurs tests de collisions
+     a l'environnement proche..
+     */
+
+    return floor((x + ( TileSize / 2)) / TileSize) + (((y + (TileSize /2)) / TileSize)* mapWidth);
+  }
 
 
   void UpdateDisplay() {
@@ -64,11 +136,14 @@ class Map {
 
 
 
+
   /*
   ---------------------------------------------------------------------------------------------------------------
    ---------------------------------------------------------------------------------------------------------------
    ---------------------------------------------------------------------------------------------------------------
    */
+
+
   private HardBlock GetHardBlock(int Id) {
     HardBlock hb;
 
@@ -201,6 +276,7 @@ class Map {
     public int[] TileFrame;
     public int[] TilesID;
     public int maxFrame;
+    public Rect rect = new Rect();
     //public ArrayList<Tile> tiles = new ArrayList<Tile>();
 
     public HardBlock(boolean bombDrop, boolean stopFlame, boolean stopEnemy, boolean stopPlayer) {
@@ -208,6 +284,14 @@ class Map {
       this.stopFlame = stopFlame;
       this.stopEnemy = stopEnemy;
       this.stopPlayer = stopPlayer;
+    }
+
+    public void setRect(int x, int y, int h, int w) {
+      // position du Rectangle du bloc sur la map.. pour les tests de collision
+      rect.x = x;
+      rect.y = y;
+      rect.h = h;
+      rect.w = w;
     }
 
     private void populateTileFrame() {

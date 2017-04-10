@@ -22,6 +22,15 @@ public class Controls {
     if (keyCode == RIGHT) {
       right = true;
     }
+    if (keyCode == 65 || keyCode == 97) {
+      a = true;
+    }
+    if (keyCode == 90 || keyCode == 122) {
+      b = true;
+    }
+    if (keyCode == 69 || keyCode == 101) {
+      b = true;
+    }
   }
 
   public void keyReleased() {
@@ -36,6 +45,15 @@ public class Controls {
     }
     if (keyCode == RIGHT) {
       right = false;
+    }
+    if (keyCode == 65 || keyCode == 97) {
+      a = false;
+    }
+    if (keyCode == 90 || keyCode == 122) {
+      b = false;
+    }
+    if (keyCode == 69 || keyCode == 101) {
+      b = false;
     }
   }
 }

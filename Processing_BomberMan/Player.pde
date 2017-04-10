@@ -1,32 +1,34 @@
 
 enum Action {
   LOOK_FRONT_WAIT, LOOK_LEFT_WAIT, LOOK_RIGHT_WAIT, LOOK_UP_WAIT, 
-    LOOK_FRONT_WALK, LOOK_LEFT_WALK, LOOK_RIGHT_WALK, LOOK_UP_WALK, 
+    LOOK_DOWN_WALK, LOOK_LEFT_WALK, LOOK_RIGHT_WALK, LOOK_UP_WALK, 
     LOOK_FRONT_CARRY_WAIT, LOOK_LEFT_CARRY_WAIT, LOOK_RIGHT_CARRY_WAIT, LOOK_UP_CARRY_WAIT, 
     LOOK_FRONT_CARRY_WALK, LOOK_LEFT_CARRY_WALK, LOOK_RIGHT_CARRY_WALK, LOOK_UP_CARRY_WALK, 
     LOOK_FRONT_THROW, LOOK_LEFT_THROW, LOOK_RIGHT_THROW, LOOK_UP_THROW, 
-    DIE, VICTORY, GROUND_APPEAR, GROUND_DISAPPEAR, TINY_DISAPPEAR;
+    DIE, VICTORY, GROUND_APPEAR, GROUND_DISAPPEAR, TINY_DISAPPEAR, VOID;
   public static int COUNT = Action.values().length;
 }
+
 
 public class BomberMan {
   private ArrayList<PImage> lPlayerImages  = new ArrayList<PImage>();
   private int spriteWidth = 16;
   private int SpriteHeight = 32;
   private int totalSprite = 134;
-  private boolean playerControl = false;
+  // private boolean playerControl = false;
   //private ArrayList<SpriteAnimation> lAnimation;
   private EnumMap<Action, SpriteAnimation> lAnimation = new EnumMap<Action, SpriteAnimation>(Action.class);
   private int xPos, yPos;
   private Action previousAction = Action.LOOK_FRONT_WAIT; // par défaut
   private int frameCounter = 0;
 
-  public BomberMan(String strTileMapPath, int SpawnPosition) {
-    PImage tileMapImg = loadImage(strTileMapPath);
+  public BomberMan(PImage tileMapImg, int SpawnPosition) {
+    // = loadImage(strTileMapPath);
     int TilePerWidth = tileMapImg.width / spriteWidth; // nombre max de tuile par ligne en fonction de la largeur en pixel de l'image tileMap
     /*  on va remplir d'image miniature "tuile" : lHardBlockTilesImages
      la tileMap à systematiquement une largeur en pixel égale à un multiple de la taille d'une tuile
      */
+
     int yDecal = 16*9; // les sprites de bomberman se trouve à une position plus basse dans l'image. (9 tuiles plus bas)
     for (int incr1 = 0; incr1 < totalSprite; incr1++) {
       int xSource = (incr1 % TilePerWidth) * spriteWidth; // position x et y dans l'image source tileMap
@@ -35,6 +37,8 @@ public class BomberMan {
       i.copy(tileMapImg, xSource, ySource, spriteWidth, SpriteHeight, 0, 0, spriteWidth, SpriteHeight); // on copie le contenu
       lPlayerImages.add(i); // on stocke chaque miniature...
     }
+
+
 
     // on construit les animations
     for (Action a : Action.values()) {
@@ -48,23 +52,32 @@ public class BomberMan {
     yPos = floor(SpawnPosition / 30) * 16;
   }
 
-  public void displayUpdate() {
+  public void drawAnimation(Action b, int x, int y) {
     /* mise a jour de l'affichage du personnage
      - en fonction de l'action en cours
      - en fonction du sprite de l'animation en cours
      - en fonction du décalage x et Y
      */
-    Action b ;
+    // Action b ;
+    /*
     if (gCtrl.left) {
-      b = Action.LOOK_LEFT_WALK;
-    } else if (gCtrl.right) {
-      b = Action.LOOK_RIGHT_WALK;
-    } else if (gCtrl.up) {
-      b = Action.LOOK_UP_WALK;
-    } else if (gCtrl.down) {
-      b = Action.LOOK_FRONT_WALK;
-    } else {
+     b = Action.LOOK_LEFT_WALK;
+     } else if (gCtrl.right) {
+     b = Action.LOOK_RIGHT_WALK;
+     } else if (gCtrl.up) {
+     b = Action.LOOK_UP_WALK;
+     } else if (gCtrl.down) {
+     b = Action.LOOK_DOWN_WALK;
+     } else if (gCtrl.a){
+     b = Action.DIE;
+     } else if (gCtrl.b){
+     b = Action.VICTORY;
+     } else {
+     */
+
+    if (b == Action.VOID) {
       switch (previousAction) {
+
       case LOOK_LEFT_WALK:
         b = Action.LOOK_LEFT_WAIT;
         break;
@@ -74,7 +87,7 @@ public class BomberMan {
       case LOOK_UP_WALK:
         b = Action.LOOK_UP_WAIT;
         break;
-      case LOOK_FRONT_WALK:
+      case LOOK_DOWN_WALK:
         b = Action.LOOK_FRONT_WAIT;
         break;
       default:
@@ -82,6 +95,7 @@ public class BomberMan {
         break;
       }
     }
+    // }
 
 
 
@@ -101,20 +115,22 @@ public class BomberMan {
     }
     pushMatrix();
     scale(gSketchScale);
-    image(lPlayerImages.get(s.TileID), xPos+s.xDecal, yPos + s.yDecal);
+    //image(lPlayerImages.get(s.TileID), xPos+s.xDecal+x, yPos + s.yDecal+y);
+    image(lPlayerImages.get(s.TileID), s.xDecal+x, s.yDecal+y -16);
     popMatrix();
+
     frameCounter++;
     if (frameCounter> sa.MaxFrame) {
       frameCounter = sa.FrameLoop;
     }
   }
 
-
+  /*
   public void SetPlayerControl(boolean bCtrl) {
-    playerControl = bCtrl;
-  }
-
-
+   playerControl = bCtrl;
+   }
+   
+   */
 
 
 
@@ -141,20 +157,16 @@ public class BomberMan {
     int[] framesPos;
     ArrayList<Sprite> sprites = new ArrayList<Sprite>();
 
-    /*
-    public SpriteAnimation() {
-     } // Constructeur par défaut explicitement défini
-     
-     public SpriteAnimation(int FrameLoop) {
-     this.FrameLoop = FrameLoop;
-     }
-     */
 
     public void setFrameLoop(int nSprite) { // défaut : boucle de la dernière vers la première
-      if (nSprite == 0)
+      if (nSprite == 0) {
         FrameLoop = 0;
-      else
-        rebuildFramesTiming();
+      } else {
+        if (MaxFrame == 0) {
+          rebuildFramesTiming();
+        }
+        FrameLoop = framesPos[nSprite];
+      }
     }
 
     public void rebuildFramesTiming() {
@@ -198,7 +210,7 @@ public class BomberMan {
     case LOOK_UP_WAIT:
       s.addSprite(1);
       break;
-    case LOOK_FRONT_WALK:
+    case LOOK_DOWN_WALK:
       s.addSprite(8, 10);
       s.addSprite(7, 10);
       s.addSprite(9, 10);
@@ -207,11 +219,11 @@ public class BomberMan {
     case LOOK_LEFT_WALK:
       s.addSprite(11, 10);
       s.addSprite(10, 10);
-      s.addSprite(12,-1,0, 10);
+      s.addSprite(12, -1, 0, 10);
       s.addSprite(10, 10);
       break;
     case LOOK_RIGHT_WALK:
-      s.addSprite(5,1,0, 10);
+      s.addSprite(5, 1, 0, 10);
       s.addSprite(4, 10);
       s.addSprite(6, 10); // decalage sur X
       s.addSprite(4, 10);
@@ -223,9 +235,8 @@ public class BomberMan {
       s.addSprite(1, 10);
       break;
     case DIE:
-      s.addSprite(7, 120);
-
-      s.addSprite(37, 30); 
+      //s.addSprite(7, 120);
+      //s.addSprite(37, 30); 
       s.addSprite(37, 1);   // 4 spins !
       s.addSprite(39, 1);
       s.addSprite(14, 1);
@@ -269,18 +280,7 @@ public class BomberMan {
       s.addSprite(43, 5);
       s.addSprite(42, 5);
       s.addSprite(43, 5);
-      s.addSprite(42, 5);
-      s.addSprite(43, 5);
-      s.addSprite(42, 5);
-      s.addSprite(43, 5);
-      s.addSprite(42, 5);
-      s.addSprite(43, 5);
-      s.addSprite(42, 5);
-      s.addSprite(43, 5);
-      s.addSprite(42, 5);
-      s.addSprite(43, 5);
-      s.addSprite(42, 5);
-      s.setFrameLoop(52);
+      s.setFrameLoop(40); // loop depuis le sprite 40
       break;
     case VICTORY:
       s.addSprite(134, 60);
@@ -290,6 +290,7 @@ public class BomberMan {
       s.addSprite(133, 10);
       s.addSprite(132, 10);
       s.addSprite(133, 60);
+      s.setFrameLoop(6); // loop sur le dernier sprite
       break;
       // les animations suivantes ne sont pas détaillées pour le moment....
     case GROUND_APPEAR:
@@ -311,7 +312,9 @@ public class BomberMan {
       s.addSprite(110);
       break;
     }
-    s.rebuildFramesTiming();
+    if (s.MaxFrame == 0) {
+      s.rebuildFramesTiming();
+    }
     return s;
   }
 }  
