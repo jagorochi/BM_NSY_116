@@ -4,19 +4,14 @@ import java.util.EnumMap;
 Controls gCtrl;
 GLC Controller;
 
-int gSketchScale = 2;
+int gSketchScale = 3;
 boolean gDebug;
-//Map gMap;
-//BomberMan gBM;
 
-void config() {
-}
 void settings() {
   int xSize = 480 * gSketchScale;
   int ySize = 240 * gSketchScale;
   size(xSize, ySize); // taille de la fenetre
   noSmooth();
-  
   gDebug = false;
 }
 
@@ -24,7 +19,7 @@ void setup() {
   noFill();
   gCtrl = new Controls();
   Controller = new GLC("bomber_man_tilemap.png", "BomberMan_Editeur_de_niveau.csv");
-
+  
   //gMap = new Map("bomber_man_tilemap.png", 16, 101, "BomberMan_Editeur_de_niveau.csv");
   //gBM = new BomberMan("bomber_man_tilemap.png",94);
   //gBM.SetPlayerControl(true);
@@ -33,6 +28,9 @@ void setup() {
 
 
 void draw() {
+  pushMatrix();
+  scale(gSketchScale);
+  
   Controller.GameLogicFrameUpdate();
   //gMap.UpdateDisplay();
   // gBM.actionUpdate();
@@ -40,4 +38,5 @@ void draw() {
   if (gDebug) {
     text("FPS : "  + round(frameRate), 10, 20);
   }
+  popMatrix();
 }

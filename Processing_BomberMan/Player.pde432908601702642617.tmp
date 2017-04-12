@@ -60,7 +60,7 @@ public class BomberMan {
 
   public void render() {
     
-    
+    //image(lPlayerImages.get(s.TileID), s.xDecal+x, s.yDecal+y -16);
     image(lPlayerImages.get(spriteToRender.TileID), spriteToRender.xDecal,spriteToRender.yDecal);
   }
 
@@ -89,7 +89,10 @@ public class BomberMan {
     } else {
       b = Action.VOID;
     }
-    
+    updateAnimation(b);
+  }
+
+  public void updateAnimation(Action b) {//, int x, int y) {
     /* mise a jour de l'affichage du personnage
      - en fonction de l'action en cours
      - en fonction du sprite de l'animation en cours
