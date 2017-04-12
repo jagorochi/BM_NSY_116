@@ -30,9 +30,9 @@ class GLC {
   Map map;
   public GLC(String strTileMapPath, String strLevelMapPath) {
     PImage tileMapImg = loadImage(strTileMapPath);
-    int pxTileSize= 16;
-    int nbMaxMapTileType = 101;
-    map = new Map(tileMapImg, pxTileSize, nbMaxMapTileType, strLevelMapPath);
+    int tileSize= 16;
+    
+    map = new Map(tileMapImg, tileSize, 101, strLevelMapPath);
     
     /*
     int PlayerSpawnPosition = 94; /// temporaire car doit être décidé en fonction du level.
@@ -49,9 +49,8 @@ class GLC {
 
   void GameLogicFrameUpdate() {
     
-    
-    map.updatePlayerAction();
     map.render();
+    map.updatePlayerAction();
     map.PlayerRender();
     
     /*
@@ -74,23 +73,24 @@ class GLC {
     */
 
     if (gDebug) {
-    
-    /*
+      //pushMatrix();
+      // scale(gSketchScale);
       int x = (nPlayerBlock % map.mapWidth) * map.TileSize;
       int y = floor(nPlayerBlock / map.mapWidth) * map.TileSize;
       stroke(0, 255, 0);
-      rect(x+1, y+1, playerRect.h-2, playerRect.w-2);*/
-    
+      rect(x+1, y+1, playerRect.h-2, playerRect.w-2);
+      //popMatrix();
     }
     
-    
+    bm.drawAnimation(b, playerRect.x, playerRect.y+1);
     if (gDebug) {
-    /*
     
+      //pushMatrix();
+     // scale(gSketchScale);
       stroke(0, 0, 255);
-      rect(playerRect.x, playerRect.y, playerRect.h, playerRect.w);*/
+      rect(playerRect.x, playerRect.y, playerRect.h, playerRect.w);
       
-    
+      //popMatrix();
     }
   }
 
