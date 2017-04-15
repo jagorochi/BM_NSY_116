@@ -10,19 +10,19 @@ public class BomberMan {
   // private boolean playerControl = false;
   //private ArrayList<SpriteAnimation> lAnimation;
   private EnumMap<Action, SpriteAnimation> lAnimation = new EnumMap<Action, SpriteAnimation>(Action.class);
-  
+
   private Action previousAction = Action.LOOK_FRONT_WAIT; // par défaut
   private int frameCounter = 0;
   public int  blockPosition;
   private Map map;
   private boolean bControl;
-  private Rect rect = new Rect();
+  private Rect rect ;
   private int walkSpeed;
   private Sprite spriteToRender;
   public BomberMan(PImage tileMapImg, Map map, int SpawnPosition, int pxTileSize) {
 
     this.map = map; // on garde une référence de l'objet map sur lequel le joueur est censé interagir..
-    
+
     int TilePerWidth = tileMapImg.width / pxTileSize; // nombre max de tuile par ligne en fonction de la largeur en pixel de l'image tileMap
     spriteWidth = pxTileSize;
     SpriteHeight = pxTileSize * 2;
@@ -40,28 +40,24 @@ public class BomberMan {
 
     // on construit les animations
     for (Action a : Action.values()) {
-      
+
       lAnimation.put(a, new SpriteAnimation(a));
     }
-    
+
     blockPosition = SpawnPosition;
-    
-    
-    rect.x = (SpawnPosition % map.blocksWidth) * pxTileSize;
-    rect.y = floor(SpawnPosition / map.blocksWidth) * pxTileSize;
-    rect.h = pxTileSize;
-    rect.w = pxTileSize;
+
+    rect = new Rect((SpawnPosition % map.blocksWidth) * pxTileSize, floor(SpawnPosition / map.blocksWidth) * pxTileSize, pxTileSize, pxTileSize);
     walkSpeed = 1;
     bControl = true;
-    spriteToRender = new Sprite(1,rect.x,rect.y,0); // default..
+    spriteToRender = new Sprite(1, rect.x, rect.y, 0); // default..
     //    xPos = (SpawnPosition % 30 ) * pxTileSize;
     //    yPos = floor(SpawnPosition / 30) * pxTileSize;
   }
 
   public void render() {
-    
-    
-    image(lPlayerImages.get(spriteToRender.TileID), spriteToRender.xDecal,spriteToRender.yDecal);
+
+
+    image(lPlayerImages.get(spriteToRender.TileID), spriteToRender.xDecal, spriteToRender.yDecal);
   }
 
   public void setActiveControl(boolean b) {
@@ -89,7 +85,7 @@ public class BomberMan {
     } else {
       b = Action.VOID;
     }
-    
+
     /* mise a jour de l'affichage du personnage
      - en fonction de l'action en cours
      - en fonction du sprite de l'animation en cours
@@ -131,7 +127,7 @@ public class BomberMan {
     } else { // negative value is the conditional new entry index 
       s = sa.sprites.get(abs(index)-1);
     }
-    spriteToRender = new Sprite(s.TileID, s.xDecal + rect.x, s.yDecal + rect.y - 16,0);
+    spriteToRender = new Sprite(s.TileID, s.xDecal + rect.x, s.yDecal + rect.y - 16, 0);
     //image(lPlayerImages.get(s.TileID), s.xDecal+x, s.yDecal+y -16);
     frameCounter++;
     if (frameCounter> sa.MaxFrame) {
@@ -161,22 +157,22 @@ public class BomberMan {
           }
         }
       }
-      blockPosition = map.getBlockPositionFromCoordinate(rect.x, rect.y);
+      blockPosition = map.getBlockPositionFromCoordinate(rect.x, rect.y, true);
       return Action.LOOK_RIGHT_WALK;
     } else {
       int yDiff = map.getYdifference(blockPosition+1, rect.y);
       if (yDiff < 0) { 
-        
+
         if (!map.IsStopPlayerBlock(blockPosition + map.blocksWidth) && !map.IsStopPlayerBlock(blockPosition + map.blocksWidth+1)) {
           rect.y +=1;
-          blockPosition = map.getBlockPositionFromCoordinate(rect.x, rect.y);
+          blockPosition = map.getBlockPositionFromCoordinate(rect.x, rect.y, true);
           return Action.LOOK_DOWN_WALK;
         }
       } else if (yDiff > 0) {
-        
+
         if (!map.IsStopPlayerBlock(blockPosition - map.blocksWidth) && !map.IsStopPlayerBlock(blockPosition - map.blocksWidth+1)) {
           rect.y -=1;
-          blockPosition = map.getBlockPositionFromCoordinate(rect.x, rect.y);
+          blockPosition = map.getBlockPositionFromCoordinate(rect.x, rect.y, true);
           return Action.LOOK_UP_WALK;
         }
       }
@@ -205,22 +201,22 @@ public class BomberMan {
           }
         }
       }
-      blockPosition = map.getBlockPositionFromCoordinate(rect.x, rect.y);
+      blockPosition = map.getBlockPositionFromCoordinate(rect.x, rect.y, true);
       return Action.LOOK_LEFT_WALK;
     } else {
       int yDiff = map.getYdifference(blockPosition-1, rect.y);
       if (yDiff < 0) { // plus bas
-        
+
         if (!map.IsStopPlayerBlock(blockPosition + map.blocksWidth) && !map.IsStopPlayerBlock(blockPosition + map.blocksWidth-1)) {
           rect.y +=1;
-          blockPosition = map.getBlockPositionFromCoordinate(rect.x, rect.y);
+          blockPosition = map.getBlockPositionFromCoordinate(rect.x, rect.y, true);
           return Action.LOOK_DOWN_WALK;
         }
       } else if (yDiff > 0) {
-        
+
         if (!map.IsStopPlayerBlock(blockPosition - map.blocksWidth) && !map.IsStopPlayerBlock(blockPosition - map.blocksWidth-1)) {
           rect.y -=1;
-          blockPosition = map.getBlockPositionFromCoordinate(rect.x, rect.y);
+          blockPosition = map.getBlockPositionFromCoordinate(rect.x, rect.y, true);
           return Action.LOOK_UP_WALK;
         }
       }
@@ -249,21 +245,21 @@ public class BomberMan {
           }
         }
       }
-      blockPosition = map.getBlockPositionFromCoordinate(rect.x, rect.y);
+      blockPosition = map.getBlockPositionFromCoordinate(rect.x, rect.y, true);
       return Action.LOOK_UP_WALK;
     } else {
       int xDiff = map.getXdifference(blockPosition- map.blocksWidth, rect.x);
       if (xDiff > 0) { 
         if (!map.IsStopPlayerBlock(blockPosition - 1) && !map.IsStopPlayerBlock(blockPosition - map.blocksWidth-1)) {
           rect.x -=1;
-          blockPosition = map.getBlockPositionFromCoordinate(rect.x, rect.y);
+          blockPosition = map.getBlockPositionFromCoordinate(rect.x, rect.y, true);
           return Action.LOOK_LEFT_WALK;
         }
       } else if (xDiff < 0) {
-        
+
         if (!map.IsStopPlayerBlock(blockPosition +1 ) && !map.IsStopPlayerBlock(blockPosition - map.blocksWidth+1)) {
           rect.x +=1;
-          blockPosition = map.getBlockPositionFromCoordinate(rect.x, rect.y);
+          blockPosition = map.getBlockPositionFromCoordinate(rect.x, rect.y,true);
           return Action.LOOK_RIGHT_WALK;
         }
       }
@@ -292,21 +288,21 @@ public class BomberMan {
           }
         }
       }
-      blockPosition = map.getBlockPositionFromCoordinate(rect.x, rect.y);
+      blockPosition = map.getBlockPositionFromCoordinate(rect.x, rect.y,true);
       return Action.LOOK_DOWN_WALK;
     } else {
       int xDiff = map.getXdifference(blockPosition+ map.blocksWidth, rect.x);
       if (xDiff > 0) { 
         if (!map.IsStopPlayerBlock(blockPosition - 1) && !map.IsStopPlayerBlock(blockPosition + map.blocksWidth-1)) {
           rect.x -=1;
-          blockPosition = map.getBlockPositionFromCoordinate(rect.x, rect.y);
+          blockPosition = map.getBlockPositionFromCoordinate(rect.x, rect.y,true);
           return Action.LOOK_LEFT_WALK;
         }
       } else if (xDiff < 0) {
-        
+
         if (!map.IsStopPlayerBlock(blockPosition +1 ) && !map.IsStopPlayerBlock(blockPosition + map.blocksWidth+1)) {
           rect.x +=1;
-          blockPosition = map.getBlockPositionFromCoordinate(rect.x, rect.y);
+          blockPosition = map.getBlockPositionFromCoordinate(rect.x, rect.y,true);
           return Action.LOOK_RIGHT_WALK;
         }
       }
@@ -318,7 +314,7 @@ public class BomberMan {
 
 
   class SpriteAnimation {
-    
+
     int FrameLoop = 0;
     int MaxFrame = 0;
     int[] framesPos;
@@ -484,7 +480,7 @@ public class BomberMan {
     int xDecal;
     int yDecal;
     int duration;
-    
+
 
     public Sprite(int TileID, int xDecal, int yDecal, int duration) {
       this.TileID = TileID;
