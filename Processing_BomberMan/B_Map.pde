@@ -1,21 +1,24 @@
-//<>// //<>//
+//<>// //<>// //<>//
 
 class Map {
+  int[] tableau= new int[]{1, 2, 2, 2, 2};
   private int blocksWidth;
   private int blocksHeight;
   private ArrayList<HardBlock> map = new ArrayList<HardBlock>();
   private ArrayList<PImage> lHardBlockTilesImages  = new ArrayList<PImage>();
   private int pxTileSize; // taille des tuiles en pixels (carré donc 16*16)
   private String strLevelMapInit[]; // on enregistre le contenu du level initial au cas ou si l'on doit réinitialiser la map.
-  private BomberMan bm;
+  private int maxScreenX, maxScreenY;
+  private int playerScrollDecalX, playerScrollDecalY;
 
-  public Map(PImage tileMapImg, int pxTileSize, int MaxTile, String strMapPath) {
+  //private GLC oParent;
+  public Map( PImage tileMapImg, int pxTileSize, int MaxTile, String strMapPath) {
     this.pxTileSize = pxTileSize;
-    int TilePerMapImage = tileMapImg.width / pxTileSize; // nombre max de tuile par ligne en fonction de la largeur en pixel de l'image tileMap
-    
+    int TilePerMapImage = 40; // FIXED tileMapImg.width / pxTileSize; // nombre max de tuile par ligne en fonction de la largeur en pixel de l'image tileMap
+    //this.oParent = oParent;
     /*  on va remplir d'image miniature "tuile" : lHardBlockTilesImages
      la tileMap à systematiquement une largeur en pixel égale à un multiple de la taille d'une tuile    
-     exemple de map...
+     exemple de map..
      23;23;44;50;23;23;23;23;23;23;23;23;23;23;23;23;23;23;23;78;79;80;23;23;23;23;23;23;23;23
      23;23;45;60;23;23;23;23;23;23;23;23;23;23;23;23;23;23;23;78;79;80;23;23;23;23;23;23;23;23
      23;23;46;61;43;43;43;43;43;43;43;43;43;43;43;43;43;37;23;78;79;80;12;12;12;12;12;12;11;23
@@ -36,26 +39,25 @@ class Map {
     strLevelMapInit = loadStrings(strMapPath); // chaque valeur dans la liste est une ligne de texte..
     blocksHeight = strLevelMapInit.length;
     blocksWidth = split(strLevelMapInit[0], ';').length;
-  
+
     for (int incr1 = 0; incr1 < blocksHeight; incr1++) {
       String[] strMapLineContent = split(strLevelMapInit[incr1], ";");
       for ( int incr2 = 0; incr2 < blocksWidth; incr2++) {
-        int blockType = Integer.parseInt(split(strMapLineContent[incr2], ",")[0]);
+        int blockType = Integer.parseInt(split(strMapLineContent[incr2], "'")[0]);
         HardBlock hb = new HardBlock(blockType, incr2 * pxTileSize, incr1 * pxTileSize, pxTileSize);
         map.add(hb);
       }
     }
-     /*
-      Initialisation du player !
-     */
-     int PlayerSpawnPosition = 94; /// temporaire car doit être décidé en fonction du level.
-     // BomberMan(PImage tileMapImg, Map map, int SpawnPosition, int pxTileSize)
-     bm = new BomberMan(tileMapImg, this, PlayerSpawnPosition, pxTileSize);
+    
+    maxScreenX = (blocksWidth * pxTileSize) - ScreenRect.w;
+    maxScreenY = (blocksHeight * pxTileSize) - ScreenRect.h;
+    playerScrollDecalX = - ((ScreenRect.w / 2 )  + (pxTileSize/2));
+    playerScrollDecalY = - ((ScreenRect.h / 2 )  + (pxTileSize/2));
   }
 
 
-  
-  
+
+
   /* fonction permettant de verifier si un block laisse passer ou pas le joueur. */
   boolean IsStopPlayerBlock(int nBlock) {
     if (gDebug) { // fonction de debug : affiche un rectangle orange à la position testée.
@@ -101,33 +103,67 @@ class Map {
   }
 
 
-  public int getBlockPositionFromCoordinate(int x, int y) {
+  public int getBlockPositionFromCoordinate(int x, int y, boolean bDecal) {
     /* Cette fonction permet de calculer le numéro de bloc de la map en fonction de coordonnées x et y.
      utile pour recalculer la position des objets qui "bougent" et ainsi limiter les futurs tests de collisions
      a l'environnement proche.. */
-    return floor((x + ( pxTileSize / 2)) / pxTileSize) + (((y + (pxTileSize /2)) / pxTileSize)* blocksWidth);
-  }
-
-
-  public void render() { // temporaire.. redessine la map en entier !
-    int x, y;
-    int s = map.size();
-    for (int incr1 = 0; incr1 < s; incr1++) {
-
-      x = (incr1 % blocksWidth) * pxTileSize;
-      y = floor(incr1 / blocksWidth) * pxTileSize;
-
-      image(lHardBlockTilesImages.get(map.get(incr1).getTileToDraw()-1), x, y);
+    if (bDecal) {
+      return floor((x + ( pxTileSize / 2)) / pxTileSize) + (((y + (pxTileSize /2)) / pxTileSize)* blocksWidth);
+    } else {
+      return floor(x  / pxTileSize) + ((y  / pxTileSize)* blocksWidth);
     }
   }
-  
-  public void updatePlayerAction(){
-    bm.updateAction();
+
+
+
+  public void render(int x, int y) {
+    /* Cette fonction permet de redessiner uniquement la zone de la map correspondant a la taille de l'ecran
+     en fonctione de l'endroit ou se trouve le joueur...
+     - on determine la position du cadre par rapport a la position du joueur dans la zone de jeu
+     - on restraint la position du cadre au bordure de la zone de jeu
+     - on recentre la position de l'écran à cette "zone de la map"
+     - on calcule les blocs a afficher se trouvant dans ce cadre..
+     - voilà :) */
+
+
+    int xPos = x + playerScrollDecalX;
+    if (xPos < 0) {
+      xPos = 0;
+    } else if (xPos > maxScreenX) {
+      xPos = maxScreenX;
+    }
+    int yPos = y + playerScrollDecalY;
+    if (yPos < 0) {
+      yPos = 0;
+    } else if (yPos > maxScreenY) {
+      yPos = maxScreenY;
+    }
+
+    translate(-xPos, -yPos); // on replace la zone a dessiner par rapport a l'origine..
+
+    int nStart = getBlockPositionFromCoordinate(xPos, yPos, false);
+    int nEnd = getBlockPositionFromCoordinate(xPos + ScreenRect.w, yPos, false);
+    int MapSize = map.size();
+    int maxLoop = floor((getBlockPositionFromCoordinate(xPos, yPos + ScreenRect.h, false ) - nStart) / blocksWidth)+1;
+
+    for (int loop = 0; loop<maxLoop; loop++) {
+      for (int nBlock = nStart; nBlock <= nEnd; nBlock++) {
+        int b = nBlock + (loop* blocksWidth);
+        if (b >= MapSize) {
+          break;
+        }
+        HardBlock hb = map.get(b);
+        image(lHardBlockTilesImages.get(hb.getTileToDraw()-1), hb.rect.x, hb.rect.y);
+      }
+    }
   }
-  
-  public void PlayerRender(){
-   bm.render(); 
-  }
+
+
+
+
+
+
+
 
 
 
@@ -147,13 +183,11 @@ class Map {
     public int[] TileFrame;
     public int[] TilesID;
     public int maxFrame;
-    public Rect rect = new Rect();
+    public Rect rect;// = new Rect();
 
     public HardBlock(int Id, int xPos, int yPos, int pxBlockSize) {
-      this.rect.x = xPos;
-      this.rect.y = yPos;
-      this.rect.h = pxBlockSize;
-      this.rect.w = pxBlockSize;
+      rect = new Rect(xPos, yPos, pxBlockSize, pxBlockSize);
+
       /* on commence par déterminer les propriétés par défaut de chaque type de HardBlock
        il n'y a que 4 type de bloc : 
        1,2 : sont les blocs sur lequel on peut marcher..
