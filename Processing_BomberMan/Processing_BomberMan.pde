@@ -1,8 +1,7 @@
-import java.util.Arrays;
-import java.util.EnumMap;
+import java.util.*;
 
 Controls gCtrl;
-GLC Controller;
+GLC Glc; // variable générale
 
 int gSketchScale = 3;
 boolean gDebug;
@@ -21,7 +20,7 @@ void settings() {
 void setup() {
   noFill();
   gCtrl = new Controls();
-  Controller = new GLC("bomber_man_tilemap.png", "BomberMan_Editeur_de_niveau.csv");
+  Glc = new GLC("bomber_man_tilemap.png", "BomberMan_Editeur_de_niveau.csv");
   
   //gMap = new Map("bomber_man_tilemap.png", 16, 101, "BomberMan_Editeur_de_niveau.csv");
   //gBM = new BomberMan("bomber_man_tilemap.png",94);
@@ -34,7 +33,7 @@ void draw() {
   pushMatrix();
    scale(gSketchScale);
   
-  Controller.GameLogicFrameUpdate(); //<>//
+  Glc.GameLogicFrameUpdate();  //<>// //<>//
   //gMap.UpdateDisplay();
   // gBM.actionUpdate();
   
