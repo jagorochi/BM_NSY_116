@@ -34,7 +34,7 @@ class Map {
       i.copy(tileMapImg, xSource, ySource, gpxMapTileSize, gpxMapTileSize, 0, 0, gpxMapTileSize, gpxMapTileSize); // on copie le contenu
       lHardBlockTilesImages.add(i); // on stocke chaque miniature...
     }
-
+    
     /*
       construction matricielle de la map en fonction du fichier de niveau .csv fournit en argument.
      */
@@ -62,8 +62,30 @@ class Map {
 
 
   /* fonction permettant de verifier si un block laisse passer ou pas le joueur. */
-  boolean IsStoppingPlayerBlock(int nBlock) {
-    return map.get(nBlock).stopPlayer;
+  boolean IsBlockStoppingCharacterAtPosition(int nBlock, CHARACTER_TYPE type) {
+    switch (type) {
+    case PLAYER :
+      if (map.get(nBlock).stopPlayer) {
+        if (gDebug) {
+          stroke(255, 100, 255);
+          Rect r = getCoordinateFromBlockPosition(nBlock);
+          rect(r.x+2, r.y+2, r.h-4, r.w-4);
+        }
+        return true;
+      }
+      break;
+    case ENEMY :
+      if (map.get(nBlock).stopPlayer) {
+        if (gDebug) {
+          stroke(255, 100, 255);
+          Rect r = getCoordinateFromBlockPosition(nBlock);
+          rect(r.x+2, r.y+2, r.h-4, r.w-4);
+        }
+        return true;
+      }
+      break;
+    }
+    return false;
   }
 
   boolean IsStoppingFlameBlock(int nBlock) {
@@ -80,17 +102,34 @@ class Map {
 
 
   /* fonction permettant de verifier si un block spécifique est en collision avec un "rect" passé en argument */
-  boolean checkHardBlockCollision(int nBlock, Rect playerRect) {
+  boolean isStoppingHardBlockCollidingWithCharacterRect(int nBlock, Rect CharacterRect, CHARACTER_TYPE type) {
     HardBlock hb = map.get(nBlock);
+
+    switch (type) {
+    case PLAYER :
+      if (!hb.stopPlayer) {
+        if (gDebug) {
+          stroke(255, 0, 255);
+          rect(hb.rect.x-2, hb.rect.y-2, hb.rect.h+4, hb.rect.w+4);
+        }
+        return false;
+      }
+      break;
+    case ENEMY :
+      if (!hb.stopEnemy) {
+        if (gDebug) {
+          stroke(255, 0, 255);
+          rect(hb.rect.x-2, hb.rect.y-2, hb.rect.h+4, hb.rect.w+4);
+        }
+        return false;
+      }
+      break;
+    }
     if (gDebug) {
-      stroke(255, 0, 0);
-      rect(hb.rect.x, hb.rect.y, hb.rect.h, hb.rect.w);
+      stroke(255, 0, 255);
+      rect(hb.rect.x-2, hb.rect.y-2, hb.rect.h+4, hb.rect.w+4);
     }
-    if (!hb.stopPlayer) {
-      return true;
-    } else {
-      return checkRectCollision(hb.rect, playerRect);
-    }
+    return isRectCollision(hb.rect, CharacterRect);
   }
 
   // fonctions permettant de verifier si la position X ou Y a tester (du joueur) est plus ou moins décalé à la position x d'un bloc determiné...
@@ -102,15 +141,7 @@ class Map {
     return map.get(nBlock).rect.y - y;
   }
 
-  /* fonction permettant de vérifier la collision entre deux "Rect"
-   ils sont ici libellés "hb" et "player" mais ça n'a aucune importance..
-   on teste deux "rectangle"... */
-  private boolean checkRectCollision(Rect hb, Rect player) {
-    return ((player.x > hb.x + hb.w)      // trop à droite
-      || (player.x + player.w < hb.x) // trop à gauche
-      || (player.y > hb.y + hb.h) // trop en bas
-      || (player.y + player.h < hb.y)) ;// trop en haut
-  }
+
 
 
 

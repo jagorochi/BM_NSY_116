@@ -16,7 +16,7 @@ class GLC {
    7. Soft / Overlay
    */
 
-  
+
   Map map;
   OBJECTS_MANAGER OManager;
   CHARACTERS_MANAGER CManager;
@@ -34,14 +34,23 @@ class GLC {
 
   void GameLogicFrameUpdate() {
     //map.updatePlayerAction();
-    OManager.UpdateObjectsStepFrame();
-    CManager.UpdateCharactersStepFrame();
-    // map.checkPlayerDeathCollision()
+    if (!gDebug) {
+      OManager.UpdateObjectsStepFrame();
+      CManager.UpdateCharactersStepFrame();
+    }
     Rect playerRect = CManager.getPlayerRect(); // récupération de la position du joueur 
     map.render(playerRect.x, playerRect.y); // Rendu de la map en fonction de la position mise a jour du joueur ! ATTENTION Cette fonction de rendu est a appelé en premier car une translation de la matrice est effectué sur le joueur..
-    //map.PlayerRender();
     OManager.RenderObjects();
     CManager.RenderCharacters();
+
+    if (gDebug) {
+      OManager.UpdateObjectsStepFrame();
+      CManager.UpdateCharactersStepFrame();
+    }
+    // map.checkPlayerDeathCollision()
+
+
+    //map.PlayerRender();
   }
 
   /*

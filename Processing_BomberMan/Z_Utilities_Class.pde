@@ -14,10 +14,23 @@ enum DIRECTION {
 
 enum FLAME_TYPE {
   CENTER, HORIZONTAL, VERTICAL, BORDER_LEFT, BORDER_RIGHT, BORDER_UP, BORDER_DOWN;
+  
 }
 
-enum BOMB_OBJECT {
-  SPAWN; 
+enum OBJECT_CATEGORY {
+  DEADLY, STATIC, ITEM, INTERACTIVE, SWITCH, DEFAULT;
+}
+
+enum CHARACTER_TYPE {
+  PLAYER, ENEMY;
+}
+
+public int[] convertStringArrayToIntArray(String[] strArray) {
+  int[] intArray = new int[strArray.length];
+  for (int incr = 0; incr < strArray.length; incr++) {
+    intArray[incr] = Integer.parseInt(strArray[incr]);
+  }
+  return intArray;
 }
 
 // la classe suivante défini un rectangle
@@ -35,14 +48,33 @@ public class Rect {
     this.w = w;
     this.h = h;
   }
+  public Rect move(DIRECTION dir, int step) {
+    // renvoie un nouvel objet après avoir appliqué un décalage..
+    switch(dir) {
+    case UP:
+      //y -= step;
+      return new Rect(x, y-step, w, h);
+    case LEFT:
+      //x -= step;
+      return new Rect(x-step, y, w, h);
+    case RIGHT:
+      //x+= step;
+      return new Rect(x+step, y, w, h);
+    case DOWN :
+      //y += step;
+      return new Rect(x, y+step, w, h);
+    default:
+      return new Rect(x, y, w, h);
+    }
+  }
 }
 
 // cette fonction booléenne permets de vérifier si 2 rectangle s'intersectent
 public boolean isRectCollision(Rect rect1, Rect rect2) {
-  return ((rect1.x > rect2.x + rect2.w)      // trop à droite
-    || (rect1.x + rect1.w < rect2.x) // trop à gauche
-    || (rect1.y > rect2.y + rect2.h) // trop en bas
-    || (rect1.y + rect1.h < rect2.y)) ;// trop en haut
+  return !((rect1.x >= rect2.x + rect2.w)      // trop à droite
+    || (rect1.x + rect1.w <= rect2.x) // trop à gauche
+    || (rect1.y >= rect2.y + rect2.h) // trop en bas
+    || (rect1.y + rect1.h <= rect2.y)) ;// trop en haut
 }
 
 public int getBlockPositionFromCoordinate(int x, int y, boolean bDecal) {
@@ -56,25 +88,30 @@ public int getBlockPositionFromCoordinate(int x, int y, boolean bDecal) {
   }
 }
 
+public Rect getCoordinateFromBlockPosition(int block) {
+  // calcul un Rect a partir de la position d'un block dans la matrice de jeu.  
+  return new Rect((block % gMapBlockWidth) * gpxMapTileSize, floor(block / gMapBlockWidth) * gpxMapTileSize, gpxMapTileSize, gpxMapTileSize);
+}
+
 public class PENDING_BASE_OBJECT { //QUICKFIX
   // utilisé pour les objets qui doivent être retirés de manière différés a la fin de la boucle "stepFrame"
   // pour éviter l'exception ConcurrentModificationException
-  public BASE_OBJECT object;
+  public BASE_OBJECT ref;
   public int block;
   public PENDING_BASE_OBJECT(int block, BASE_OBJECT object) {
     this.block = block;
-    this.object = object;
+    this.ref = object;
   }
 }
 
-public class BASE_CHARACTER_FOR_REMOVAL { 
+public class PENDING_BASE_CHARACTER { 
   // utilisé pour les characters qui doivent être retirés de manière différés a la fin de la boucle "stepFrame"
   // pour éviter l'exception ConcurrentModificationException
-  public BASE_CHARACTER object;
+  public BASE_CHARACTER ref;
   public int block;
-  public BASE_CHARACTER_FOR_REMOVAL(int block, BASE_CHARACTER object) {
+  public PENDING_BASE_CHARACTER(int block, BASE_CHARACTER object) {
     this.block = block;
-    this.object = object;
+    this.ref = object;
   }
 }
 
@@ -183,7 +220,7 @@ public class Controls {
       b = true;
     }
     if (keyCode == 69 || keyCode == 101) {
-      b = true;
+      c = true;
     }
   }
 
@@ -207,7 +244,7 @@ public class Controls {
       b = false;
     }
     if (keyCode == 69 || keyCode == 101) {
-      b = false;
+      c = false;
     }
   }
 }
