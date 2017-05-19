@@ -34,7 +34,7 @@ class Map {
       i.copy(tileMapImg, xSource, ySource, gpxMapTileSize, gpxMapTileSize, 0, 0, gpxMapTileSize, gpxMapTileSize); // on copie le contenu
       lHardBlockTilesImages.add(i); // on stocke chaque miniature...
     }
-    
+
     /*
       construction matricielle de la map en fonction du fichier de niveau .csv fournit en argument.
      */
@@ -62,8 +62,8 @@ class Map {
 
 
   /* fonction permettant de verifier si un block laisse passer ou pas le joueur. */
-  boolean IsBlockStoppingCharacterAtPosition(int nBlock, CHARACTER_TYPE type) {
-    switch (type) {
+  boolean IsHardBlockStoppingEntityAtPosition(int nBlock, ENTITY_TYPE entity) {
+    switch (entity) {
     case PLAYER :
       if (map.get(nBlock).stopPlayer) {
         if (gDebug) {
@@ -74,6 +74,17 @@ class Map {
         return true;
       }
       break;
+    case OBJECT :
+      if (map.get(nBlock).stopObject) {
+        if (gDebug) {
+          stroke(255, 100, 255);
+          Rect r = getCoordinateFromBlockPosition(nBlock);
+          rect(r.x+2, r.y+2, r.h-4, r.w-4);
+        }
+        return true;
+      }
+      break;
+
     case ENEMY :
       if (map.get(nBlock).stopPlayer) {
         if (gDebug) {
@@ -88,24 +99,29 @@ class Map {
     return false;
   }
 
-  boolean IsStoppingFlameBlock(int nBlock) {
+  boolean IsHardBlockStoppingFlame(int nBlock) {
     return map.get(nBlock).stopFlame;
   }
-
+/*
   boolean IsStoppingEnemyBlock(int nBlock) {
     return map.get(nBlock).stopEnemy;
   }
-
-  boolean IsBombDroppableOnBlock(int nBlock) {
+*/
+  boolean IsHardBlockBombDroppable(int nBlock) {
     return map.get(nBlock).bombDrop;
   }
 
+/*
+  boolean IsStoppingObjectBlock(int nBlock) {
+    return map.get(nBlock).stopObject;
+  }
+*/
 
   /* fonction permettant de verifier si un block spécifique est en collision avec un "rect" passé en argument */
-  boolean isStoppingHardBlockCollidingWithCharacterRect(int nBlock, Rect CharacterRect, CHARACTER_TYPE type) {
+  boolean isStoppingHardBlockCollidingWithEntityRect(int nBlock, Rect EntityRect, ENTITY_TYPE entity) {
     HardBlock hb = map.get(nBlock);
-
-    switch (type) {
+    
+    switch (entity) {
     case PLAYER :
       if (!hb.stopPlayer) {
         if (gDebug) {
@@ -124,20 +140,29 @@ class Map {
         return false;
       }
       break;
+    case OBJECT:
+      if (!hb.stopObject) {
+        if (gDebug) {
+          stroke(255, 0, 255);
+          rect(hb.rect.x-2, hb.rect.y-2, hb.rect.h+4, hb.rect.w+4);
+        }
+        return false;
+      }
+      break;
     }
     if (gDebug) {
       stroke(255, 0, 255);
       rect(hb.rect.x-2, hb.rect.y-2, hb.rect.h+4, hb.rect.w+4);
     }
-    return isRectCollision(hb.rect, CharacterRect);
+    return isRectCollision(hb.rect, EntityRect);
   }
 
   // fonctions permettant de verifier si la position X ou Y a tester (du joueur) est plus ou moins décalé à la position x d'un bloc determiné...
   // utile pour verifier si l'on doit déplacer le player dans un couloir
-  public int getXdifference(int nBlock, int x) {
+  public float getXdifference(int nBlock, float x) {
     return map.get(nBlock).rect.x - x;
   }
-  public int getYdifference(int nBlock, int y) {
+  public float getYdifference(int nBlock, float y) {
     return map.get(nBlock).rect.y - y;
   }
 
@@ -212,6 +237,7 @@ class Map {
     public boolean stopFlame;
     public boolean stopEnemy;
     public boolean stopPlayer;
+    public boolean stopObject;
     private int[] TileFrame;
     private int[] TilesID;
     private int maxFrame;
@@ -233,7 +259,8 @@ class Map {
         this.stopFlame = false;
         this.stopEnemy = false;
         this.stopPlayer = false;
-
+        this.stopObject = false;
+        
         break;
       case 32 : // type escalier
         // hb = new HardBlock(false, true, false, false);
@@ -241,6 +268,7 @@ class Map {
         this.stopFlame = true;
         this.stopEnemy = false;
         this.stopPlayer = false;
+        this.stopObject = false;
 
         break;
       default: // mur simple
@@ -249,6 +277,7 @@ class Map {
         this.stopFlame = true;
         this.stopEnemy = true;
         this.stopPlayer = true;
+        this.stopObject = true;
       }
 
       // textures du bloc, peuvent être multiples avec une durée d'affichage en nombre de frame 

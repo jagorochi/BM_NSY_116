@@ -29,12 +29,12 @@ public class OBJECTS_MANAGER {
       i.copy(tileMapImg, xSource, ySource, gpxMapTileSize, gpxMapTileSize, 0, 0, gpxMapTileSize, gpxMapTileSize); // on copie le contenu
       lObjectTilesImages.add(i); // on stocke chaque miniature...
     }
-    
+
     // spawn des objets du niveau------------------------------------------------------------------------------------------------------------
     strLevelMapInit = loadStrings(strMapPath); // chaque valeur dans la liste est une ligne de texte..
     //gMapBlockHeight = strLevelMapInit.length;
     //gMapBlockWidth = split(strLevelMapInit[0], ';').length;
-
+    
     int maxMapBlock = gMapBlockHeight * gMapBlockWidth;
     for (int incr = 0; incr < maxMapBlock; incr++) {
       ObjectMapMatrix.add(new ArrayList<BASE_OBJECT>());
@@ -52,7 +52,7 @@ public class OBJECTS_MANAGER {
             switch(items[incr3]) {
             case "102": // light off // 103 = light up
             case "103":
-              AppendObjectForInclusion(block, new SWITCH(block));
+              AppendObjectForInclusion(block, new CAPSULE_SWITCH(block));
               break;
             case "104": // bomb explosion maximizer
               int[] powerDir = convertStringArrayToIntArray(split(items[incr3+1], ","));
@@ -60,7 +60,7 @@ public class OBJECTS_MANAGER {
               break;
             case "105": // coffre
               String strItem = "";
-              if (items.length>incr3+1){
+              if (items.length>incr3+1) {
                 strItem = items[incr3+1];
               }
               AppendObjectForInclusion(block, new CHEST(block, strItem));
@@ -69,9 +69,17 @@ public class OBJECTS_MANAGER {
               AppendObjectForInclusion(block, new DYNAMITE(block));
               break;
             case "107": // magnet down
+              AppendObjectForInclusion(block, new MAGNET(block,DIRECTION.DOWN));
+              break;
             case "108": // magnet right
+            AppendObjectForInclusion(block, new MAGNET(block,DIRECTION.RIGHT));
+              break;
             case "109": // magnet left
+            AppendObjectForInclusion(block, new MAGNET(block,DIRECTION.LEFT));
+              break;
             case "110": // magnet up
+            AppendObjectForInclusion(block, new MAGNET(block,DIRECTION.UP));
+              break;
             }
           }
         }
@@ -98,14 +106,15 @@ public class OBJECTS_MANAGER {
      stepFrame() s'execute sous peine de générer une exception..
      on enregistre alors les reference de ces objets pour être ajouté pour la "frame suivante".. 
      */
-    o.setController(this);
+
     PendingObjectsForInclusion.add(new PENDING_BASE_OBJECT(block, o));
   }
 
   void IncludePendingObjects() {
     // boucle appelé a la fin de stepFrame();
-    for (PENDING_BASE_OBJECT o : PendingObjectsForInclusion) {
-      ObjectMapMatrix.get(o.block).add(o.ref);
+    for (PENDING_BASE_OBJECT Pending_Object : PendingObjectsForInclusion) {
+      ObjectMapMatrix.get(Pending_Object.block).add(Pending_Object.ref);
+      Pending_Object.ref.setController(this);
     }
     PendingObjectsForInclusion.clear();
   }
@@ -143,43 +152,51 @@ public class OBJECTS_MANAGER {
     return lst;
   }
   
-  public ArrayList<BASE_CHARACTER> getCollidingCharactersFromRect(int block, Rect rect){
-    return Glc.CManager.getCollidingCharactersFromRect(block,rect);
+  public ArrayList<BASE_CHARACTER> getCollidingCharactersFromRect(int block, Rect rect) {
+    return Glc.CManager.getCollidingCharactersFromRect(block, rect);
   }
-  
-  public boolean isStoppingObjectsCollidingWithCharacterRect(int block, Rect CharacterRect, CHARACTER_TYPE type) {
+
+  public boolean isStoppingObjectsCollidingWithEntityRect(int block, Rect EntityRect, ENTITY_TYPE entity, BASE_OBJECT selfCollision) {
+    // "SelfCollision pour eviter qu'un objet se touche lui-meme
     for (int yDecal = -1; yDecal <=1; yDecal++) {
       for (int xDecal = -1; xDecal <=1; xDecal++) {
         int nBlockDecal =  block + (yDecal * gMapBlockWidth) + xDecal;
         for (BASE_OBJECT o : ObjectMapMatrix.get(nBlockDecal)) {
-          switch (type) {
+          switch (entity) {
           case PLAYER :
-            //if ((nBlockDecal != block) || !(o instanceof BOMB)) {
-            if (o.stopPlayer && isRectCollision(CharacterRect, o.rect)) {
+            
+            if (o.stopPlayer && isRectCollision(EntityRect, o.rect)) {
               if (gDebug) {
                 stroke(255, 153, 0);
                 Rect r = getCoordinateFromBlockPosition(o.block);
                 rect(r.x-1, r.y-1, r.h+2, r.w+2);
-                println("touche un objet");
-                //println("PlayerRect = " + CharacterRect.x +", " + CharacterRect.y + ", " + CharacterRect.w +", " + CharacterRect.h );
-                //println("ObjectRect = " + o.rect.x +", " + o.rect.y + ", " + o.rect.w +", " + o.rect.h );
               }
               return true;
             }
             //}
             break;
+          case OBJECT :
+            if (o.stopObject && (o != selfCollision) && isRectCollision(EntityRect, o.rect)) {
+              if (gDebug) {
+                stroke(255, 153, 0);
+                Rect r = getCoordinateFromBlockPosition(o.block);
+                rect(r.x-1, r.y-1, r.h+2, r.w+2);
+              }
+              return true;
+            }
+            //}
+            break;
+
           case ENEMY :
-            if (o.stopEnemy && isRectCollision(CharacterRect, o.rect)) {
+            if (o.stopEnemy && isRectCollision(EntityRect, o.rect)) {
               if (gDebug) {
                 stroke(255, 153, 0);
                 Rect r = getCoordinateFromBlockPosition(nBlockDecal);
                 rect(r.x-1, r.y-1, r.h+2, r.w+2);
-                println("EnemyRect = " + CharacterRect.x +", " + CharacterRect.y );
+                //println("EnemyRect = " + EntityRect.x +", " + EntityRect.y );
               }
               return true;
             }
-
-
             break;
           }
         }
@@ -189,19 +206,24 @@ public class OBJECTS_MANAGER {
   }
 
 
-
   boolean IsMapStoppingFlameBlock(int nBlock) {
-    return Glc.map.IsStoppingFlameBlock(nBlock);
+    return Glc.map.IsHardBlockStoppingFlame(nBlock);
   }
 
   public ArrayList<BASE_OBJECT>  getMapBlockPositionObjectList(int block) {
     return ObjectMapMatrix.get(block);
   }
 
-  public boolean IsObjectStoppingCharacterAtPosition(int block, CHARACTER_TYPE type) {
+
+
+  public boolean IsMapStoppingObjectBlock(int block, Rect rect) {
+    return Glc.map.IsHardBlockStoppingEntityAtPosition(block, ENTITY_TYPE.OBJECT) && Glc.map.isStoppingHardBlockCollidingWithEntityRect(block, rect ,ENTITY_TYPE.OBJECT );
+  }
+
+  public boolean IsObjectStoppingEntityAtPosition(int block, ENTITY_TYPE entity) {
 
     for (BASE_OBJECT o : ObjectMapMatrix.get(block)) {
-      switch (type) {
+      switch (entity) {
       case PLAYER :
         if (o.stopPlayer) {
           if (gDebug) {
@@ -211,6 +233,16 @@ public class OBJECTS_MANAGER {
           }
           return true;
         }
+      case OBJECT :
+        if (o.stopObject) {
+          if (gDebug) {
+            stroke(255, 153, 0);
+            Rect r = getCoordinateFromBlockPosition(block);
+            rect(r.x, r.y, r.h, r.w);
+          }
+          return true;
+        }
+
       case ENEMY :
         if (o.stopEnemy) {
           if (gDebug) {
@@ -258,10 +290,11 @@ public class OBJECTS_MANAGER {
 
 public class BASE_OBJECT {
   public OBJECTS_MANAGER OM;
-  
+
   public Rect rect;// position x,y sur la map
   public Rect HitBox; // hitbox de l'objet
-  
+
+  public String itemType; // uniquement pour les item
   public OBJECT_CATEGORY category;
   public int block; // block sur lequel l'objet se trouve
   public int stepFrame = 0;//
@@ -269,13 +302,18 @@ public class BASE_OBJECT {
   public int[] Sprites; // liste des sprites a utiliser dans l'animation de l'objet
   public int[] FrameTimings; // duration des animations
   public int maxStepFrame;
-
+  
   public boolean bombDrop; // est ce qu'on peut déposer une bombe sur cet objet
   public boolean stopFlame; // est ce que cet objet arrete les flammes
   public boolean stopEnemy; // est ce que cet objet arrete les enemies
   public boolean stopPlayer; // est ce que cet objet arrete le joueur...
-  public boolean movable; // est ce que l'objet est déplacable..
-
+  public boolean stopObject; // est ce que cet objet arrete les Items pouvant être "kické" ou "poussés"...
+  public boolean kickable; // est ce que l'objet peut être kické
+  public boolean movable; // est ce que l'objet peut être poussé/déplacé
+  public boolean isMovingByKick;
+  public DIRECTION movingDirection;
+  
+  private float movingSpeed;
 
   public OBJECTS_MANAGER controller;
   public BASE_OBJECT( int block) {
@@ -283,6 +321,10 @@ public class BASE_OBJECT {
     this.rect = new Rect((block % gMapBlockWidth) * gpxMapTileSize, floor(block / gMapBlockWidth) * gpxMapTileSize, gpxMapTileSize, gpxMapTileSize);
     this.HitBox = new Rect(rect.x+6, rect.y+6, rect.w-12, rect.h-12);// le rectangle de collision est toujours plus petit..
     this.category = OBJECT_CATEGORY.DEFAULT;
+    this.stopObject = false;
+    this.kickable = false;
+    this.movable = false;
+    this.isMovingByKick = false;
   }
 
   public void setController(OBJECTS_MANAGER controller) {
@@ -302,6 +344,7 @@ public class BASE_OBJECT {
   }
   public void playerHit() {
   }
+
   public void enemyHit() {
   }
 
@@ -310,11 +353,66 @@ public class BASE_OBJECT {
     controller = null;
   }
 
+  public void kick(DIRECTION dir, float speed) {
+    /* verifier pour chaque step si : 
+     - l'objet ne tente pas d'aller vers un HB de la map
+     - l'objet n'est pas en contact avec d'autre objet stoppant
+     - l'objet n'est pas en collision avec des characters (enemy + player)
+     */
+    if (!kickable) {
+      return;
+    }
+    if (!isMovingByKick) { // on enregistre si l'action vient de demarrer pour pouvoir utiliser le stepFrame..
+      isMovingByKick = true;
+      
+      movingDirection = dir;
+      movingSpeed = speed;
+    }
+    int blockDecal;
+    switch (movingDirection) {
+    case LEFT :
+      blockDecal = -1;
+      break;
+    case UP :
+      blockDecal = -gMapBlockWidth;
+      break;
+    case DOWN :
+      blockDecal = +gMapBlockWidth;
+      break;
+    case RIGHT : 
+      blockDecal = +1;
+      break;
+    default:
+      blockDecal = 0;
+    }
+
+    Rect testRect = rect.move(movingDirection, speed); // vitesse par défaut
+    if ((!controller.IsMapStoppingObjectBlock(block+blockDecal, testRect) // si aucune collision avec un HardBlock de la map
+      && (!controller.isStoppingObjectsCollidingWithEntityRect(block+blockDecal,testRect, ENTITY_TYPE.OBJECT, this)) // si aucune collision avec un autre objet stoppant
+      && (controller.getCollidingCharactersFromRect(block, testRect).size()==0 || !stopPlayer ))){// si aucun contact avec un Character
+      rect = testRect; // deplacement ok
+      checkMapMatrixPermutation();
+    } else {
+      isMovingByKick = false;
+    }
+    
+  }
+
+
+  /*   ((controller.getCollidingCharactersFromRect(block, testRect).size() == 0)
+   &&  */
+
+  /*&& (!controller.isObjectsCollidingWithObjectRect(block, testRect))*/
+  public void push(DIRECTION dir) {
+  }
 
   public void stepFrame() {
     stepFrame++;
     if (stepFrame > maxStepFrame) {
       stepFrame = 0;
+    }
+    if (isMovingByKick) {
+      kick(movingDirection, movingSpeed);
     }
   }
   /*

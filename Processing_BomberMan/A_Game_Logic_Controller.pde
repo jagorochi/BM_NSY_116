@@ -20,7 +20,7 @@ class GLC {
   Map map;
   OBJECTS_MANAGER OManager;
   CHARACTERS_MANAGER CManager;
-
+  
   public GLC(String strTileMapPath, String strLevelMapPath) {
     PImage tileMapImg = loadImage(strTileMapPath);
     int pxTileSize= 16;
@@ -39,10 +39,10 @@ class GLC {
       CManager.UpdateCharactersStepFrame();
     }
     Rect playerRect = CManager.getPlayerRect(); // récupération de la position du joueur 
-    map.render(playerRect.x, playerRect.y); // Rendu de la map en fonction de la position mise a jour du joueur ! ATTENTION Cette fonction de rendu est a appelé en premier car une translation de la matrice est effectué sur le joueur..
+    map.render((int)playerRect.x, (int)playerRect.y); // Rendu de la map en fonction de la position mise a jour du joueur ! ATTENTION Cette fonction de rendu est a appelé en premier car une translation de la matrice est effectué sur le joueur..
     OManager.RenderObjects();
     CManager.RenderCharacters();
-
+    
     if (gDebug) {
       OManager.UpdateObjectsStepFrame();
       CManager.UpdateCharactersStepFrame();

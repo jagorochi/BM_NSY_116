@@ -12,7 +12,7 @@ void settings() {
   int ySize = 208 ; // 13 blocks de 16px
   ScreenRect = new Rect(0,0,xSize,ySize);
   size(xSize* gSketchScale, ySize *gSketchScale); // taille de la fenetre
-  noSmooth();
+  noSmooth(); 
   gDebug = false;
 }
 

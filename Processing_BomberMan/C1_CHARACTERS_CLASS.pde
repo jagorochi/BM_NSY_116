@@ -2,17 +2,17 @@
 // --------------------------------------------------------------------------------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------------------------------------------------------------
 
+
 public class BOMBERMAN extends BASE_CHARACTER {
   public BOMBERMAN(int blockPosition) {
     super(blockPosition);
-
     flamePower = 4;
     DropBombCapacity = 3;
   }
 
   public void stepFrame() {
     boolean bool = false;
-    
+
     if (bControl) { // si le joueur a l'accès...
       if (gCtrl.left) {
         bool =  tryLeftStep();
@@ -26,15 +26,50 @@ public class BOMBERMAN extends BASE_CHARACTER {
         WaitStance();
       }
       // si deplacement réussi on check si on touche un ITEM
-
-      for (BASE_OBJECT o : controller.getTouchingObjectsWithCharacterRect( blockPosition, rect)) {
+      
+      for (BASE_OBJECT o : controller.getTouchingObjectsWithCharacterRect(blockPosition, rect)) {
         switch (o.category) {
         case DEADLY :
           updateSpriteAnimationFrame(CHARACTER_ACTION.DIE);
           bControl = false;
           break;
         case ITEM :
+          switch (o.itemType) {
+          case "BOMB_UP":
+            DropBombCapacity++;
+            if (DropBombCapacity>5){
+              DropBombCapacity = 5;
+            }
+            break;
+          case "SPEED_UP":
+            walkSpeed+=0.2;
+            if (walkSpeed>2.0){
+              walkSpeed = 2;
+            }
+            break;
+          case "FLAME_UP":
+            flamePower++;
+            if (flamePower>10){
+              flamePower = 10; 
+            }
+            break;
+          case "SPEED_DOWN":
+            if (walkSpeed<0.6){
+              walkSpeed = 0.6; // faut pas abuser non plus ^^
+            }
+            break;
+          case "LIFE_UP":
+            
+            break;
+          case "KICK":
+            
+            break;
+          case "REMOTE":
+            
+            break;
+          }
           controller.RemoveObject(o.block, o);
+
           break;
         default:
           break;
@@ -44,13 +79,22 @@ public class BOMBERMAN extends BASE_CHARACTER {
 
       if (gCtrl.a) {
         tryDropBomb(); //updateSpriteAnimationFrame(CHARACTER_ACTION.DIE);
-      } 
-      if (gCtrl.b) {
-        updateSpriteAnimationFrame(CHARACTER_ACTION.VICTORY);
       }
-    } else if (gCtrl.c){
+      if (gCtrl.b) {
+        // updateSpriteAnimationFrame(CHARACTER_ACTION.VICTORY);
+        // test de kick sur bomb
+        IsKicking = true;
+        
+        /*  if (ActiveDroppedBombs.size()>0) {
+          ActiveDroppedBombs.get(0).kick(DIRECTION.RIGHT, 1.5);
+        }*/
+        
+      }else{
+       IsKicking = false; // simple test 
+      }
+    } else if (gCtrl.c) {
       bControl = true;
-    }else{
+    } else {
       WaitStance();
     }
     if (bool) {
@@ -62,9 +106,8 @@ public class BOMBERMAN extends BASE_CHARACTER {
      - en fonction du décalage x et Y
      */
   }
-
-
-
+  
+  
   protected SpriteAnimation DefineSpriteAnimationFromAction(CHARACTER_ACTION a) {
     SpriteAnimation  sa = new SpriteAnimation();
     switch (a) {

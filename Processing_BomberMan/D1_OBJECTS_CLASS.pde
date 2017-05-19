@@ -1,18 +1,19 @@
 
 public class BOMB extends BASE_OBJECT {
-
   private int power;
   private int duration;
   private boolean bExploded;
   public BASE_CHARACTER dropper;  // permet de suivre le compteur de bombe active du character qui a droppé la bombe.. 
   public BOMB(int block, BASE_CHARACTER dropper, int power, int duration) {
     super(block); // appel vers le constructeur parent
-    this.category = OBJECT_CATEGORY.INTERACTIVE;
+    this.category = OBJECT_CATEGORY.BOMB;
     bombDrop = false; // est ce qu'on peut déposer une bombe sur cet objet
     stopFlame = true; // est ce que cet objet arrete les flammes
     stopEnemy = false; // est ce que cet objet arrete les enemies
     stopPlayer = false; // est ce que cet objet arrete le joueur...
+    stopObject = true; // est ce que cet objet arrete les objets pouvant être kické ou poussés...
     movable = true; // est ce que l'objet est déplacable..
+    this.kickable = true; // est ce que l'objet peut être kické.
     bExploded = false;
     this.dropper = dropper;   // character qui a droppé la bombe
     this.duration = duration; // frame duration
@@ -22,6 +23,7 @@ public class BOMB extends BASE_OBJECT {
     FrameTimings = new int[]{20, 40, 60, 80}; // duration des animations
     maxStepFrame = FrameTimings[FrameTimings.length-1]; // boucle sur la dernière frame
   }
+
 
   public void stepFrame() {
     super.stepFrame();
@@ -64,13 +66,11 @@ public class BOMB extends BASE_OBJECT {
       }
     }
     // maintenant on créer des objets "flammes autour" :)
-    // ---------------------------------------------------------------------------------------- 
-
-
+    // ----------------------------------------------------------------------------------------
     ArrayList<BASE_OBJECT> FlameHitPendingObjects = new ArrayList<BASE_OBJECT>(); // liste des objets qui sont touchés par les flammes.. 
-
     // centre de la flamme
     controller.AppendObjectForInclusion(block, new FLAME(block, FLAME_TYPE.CENTER));
+    FlameHitPendingObjects.addAll(controller.getMapBlockPositionObjectList(block));
     // vers la gauche
     FlameHitPendingObjects.addAll(deployFlame(powerDir[0], -1, FLAME_TYPE.HORIZONTAL, FLAME_TYPE.BORDER_LEFT));
     // vers le haut
@@ -125,6 +125,111 @@ public class BOMB extends BASE_OBJECT {
   }
 }
 
+public class DYNAMITE extends BASE_OBJECT {
+  boolean bExploded;
+  int duration;
+  public DYNAMITE(int block) {
+    super(block);
+    this.category = OBJECT_CATEGORY.BOMB;
+    bombDrop = false; // est ce qu'on peut déposer une bombe sur cet objet
+    stopFlame = true; // est ce que cet objet arrete les flammes
+    stopEnemy = true; // est ce que cet objet arrete les enemies
+    stopPlayer = true; // est ce que cet objet arrete le joueur...
+    movable = false; // est ce que l'objet est déplacable..
+    stopObject = true; // est ce que cet objet arrete les objets pouvant être kické ou poussés...
+    bExploded = false;
+    Sprites = new int[]{4};
+    FrameTimings = new int[]{10};
+    maxStepFrame = 10; // boucle sur la dernière frame
+    duration = 30;
+  }
+
+
+  public void stepFrame() {
+    super.stepFrame();
+    if (bExploded) {
+      duration--;
+      if (duration == 0) {
+        deploy2ndWaveFlame();
+        destruct();
+      }
+    }
+  }
+
+  private void deploy2ndWaveFlame() {
+    DeployWaveExplosion(block - 2);
+    DeployWaveExplosion(block - (2*gMapBlockWidth));
+    DeployWaveExplosion(block + 2);
+    DeployWaveExplosion(block + (2*gMapBlockWidth));
+  }
+
+
+  public void flameHit() {
+    if (bExploded) {
+      return;
+    }
+    bExploded = true; // 
+    // maintenant on créer des objets "flammes autour" :)
+    // ----------------------------------------------------------------------------------------
+    DeployWaveExplosion(block);
+  }
+  private void DeployWaveExplosion(int blockDecal) {
+    ArrayList<BASE_OBJECT> FlameHitPendingObjects = new ArrayList<BASE_OBJECT>(); // liste des objets qui sont touchés par les flammes.. 
+
+    // centre de la flamme
+    if (!controller.IsMapStoppingFlameBlock(blockDecal)) {
+      FlameHitPendingObjects.addAll(deployFlame(blockDecal, 1, 0, FLAME_TYPE.CENTER, FLAME_TYPE.CENTER));
+      // vers la gauche
+      FlameHitPendingObjects.addAll(deployFlame(blockDecal, 2, -1, FLAME_TYPE.HORIZONTAL, FLAME_TYPE.BORDER_LEFT));
+      // vers le haut
+      FlameHitPendingObjects.addAll(deployFlame(blockDecal, 2, -gMapBlockWidth, FLAME_TYPE.VERTICAL, FLAME_TYPE.BORDER_UP));
+      // vers la droite
+      FlameHitPendingObjects.addAll(deployFlame(blockDecal, 2, 1, FLAME_TYPE.HORIZONTAL, FLAME_TYPE.BORDER_RIGHT));
+      // vers le bas
+      FlameHitPendingObjects.addAll(deployFlame(blockDecal, 2, gMapBlockWidth, FLAME_TYPE.VERTICAL, FLAME_TYPE.BORDER_DOWN));
+      // on "flameHit" tous les objets qui étaient sur le chemin des flammes :)
+      for (BASE_OBJECT o : FlameHitPendingObjects) {
+        o.flameHit();
+      }
+      FlameHitPendingObjects.clear();
+    }
+  }
+
+  private ArrayList<BASE_OBJECT> deployFlame(int blockPos, int pwr, int decal, FLAME_TYPE arm, FLAME_TYPE border) {
+    FLAME_TYPE ft;
+    ArrayList<BASE_OBJECT> FlameHitPendingObjects = new ArrayList<BASE_OBJECT>();
+    for (int incr = 1; incr<=pwr; incr++) {
+      int blockDecal = blockPos + (incr*decal);
+      if (controller.IsMapStoppingFlameBlock(blockDecal)) { // est ce un block de la map qui arrete les flammes ?
+        break;
+      }
+      // verification si sur le bloc concerné il n'y a justement pas un objet qui stoppe les flammes
+      boolean stopFlame = false;
+      for (BASE_OBJECT o : controller.getMapBlockPositionObjectList(blockDecal)) {
+        if (o.stopFlame == true) {
+          FlameHitPendingObjects.add(o); // cet objet doit au moins être touché par la flamme
+          //stopFlame = true;
+          //break;
+        }
+      }
+      if (stopFlame== true) {
+        break;
+      }
+
+      FlameHitPendingObjects.addAll(controller.getMapBlockPositionObjectList(blockDecal));
+
+      if (incr == pwr) {
+        ft = border;
+      } else {
+        ft = arm;
+      }
+      controller.AppendObjectForInclusion(blockDecal, new FLAME(blockDecal, ft));
+    }
+    return FlameHitPendingObjects;
+  }
+}
+
+
 public class FLAME extends BASE_OBJECT {
   private int duration;
   public FLAME(int block, FLAME_TYPE type) {
@@ -135,7 +240,7 @@ public class FLAME extends BASE_OBJECT {
     stopEnemy = false; // est ce que cet objet arrete les enemies
     stopPlayer = false; // est ce que cet objet arrete le joueur...
     movable = false; // est ce que l'objet est déplacable..
-
+    stopObject = false; // est ce que cet objet arrete les objets pouvant être kické ou poussés...
     switch(type) { // liste des sprites a utiliser dans l'animation de la flamme
     case CENTER : 
       Sprites = new int[]{15, 16, 17, 18, 19, 18, 19, 18, 19, 18, 17, 16, 15};
@@ -185,6 +290,7 @@ public class EXPLOSION_MAXIMIZER extends BASE_OBJECT {
     stopEnemy = false; // est ce que cet objet arrete les enemies
     stopPlayer = false; // est ce que cet objet arrete le joueur...
     movable = false; // est ce que l'objet est déplacable..
+    stopObject = false; // est ce que cet objet arrete les objets pouvant être kické ou poussés...
 
     Sprites = new int[]{2};
     FrameTimings = new int[]{10};
@@ -197,6 +303,7 @@ public class EXPLOSION_MAXIMIZER extends BASE_OBJECT {
 
 public class CHEST extends BASE_OBJECT {
   String strItem;
+  boolean flameHit;
   public CHEST(int block, String strItem) {
     super(block);
     this.category = OBJECT_CATEGORY.INTERACTIVE;
@@ -206,40 +313,22 @@ public class CHEST extends BASE_OBJECT {
     stopEnemy = true; // est ce que cet objet arrete les enemies
     stopPlayer = true; // est ce que cet objet arrete le joueur...
     movable = false; // est ce que l'objet est déplacable..
+    stopObject = true; // est ce que cet objet arrete les objets pouvant être kické ou poussés...
     Sprites = new int[]{3};
     FrameTimings = new int[]{10};
     maxStepFrame = 10;
+    flameHit = false;
   }
 
   public void flameHit() {
-    switch (strItem) {
-    case "BOMB_UP":
-      controller.AppendObjectForInclusion(block, new ITEM_BOMB_UP(block));
-      break;
-    case "SPEED_UP":
-      controller.AppendObjectForInclusion(block, new ITEM_SPEED_UP(block));
-      break;
-    case "FLAME_UP":
-      controller.AppendObjectForInclusion(block, new ITEM_FLAME_UP(block));
-      break;
-    case "SPEED_DOWN":
-      controller.AppendObjectForInclusion(block, new ITEM_SPEED_DOWN(block));
-      break;
-    case "LIFE_UP":
-      controller.AppendObjectForInclusion(block, new ITEM_LIFE_UP(block));
-      break;
-    case "KICK":
-      controller.AppendObjectForInclusion(block, new ITEM_KICK(block));
-      break;
-    case "DETONATOR":
-      controller.AppendObjectForInclusion(block, new ITEM_DETONATOR(block));
-      break;
-
-
-    default:
-      break;
+    if (flameHit) {
+      return;
     }
-    controller.AppendObjectForInclusion(block, new EXPLODING_CHEST(block));
+    flameHit = true; // afin que cette fonction ne soit exécutée qu'une seule fois..
+    if (strItem != "") {
+      controller.AppendObjectForInclusion(block, new ITEM(block, strItem)); // on créer l'item avec la bonne propriété
+    }
+    controller.AppendObjectForInclusion(block, new EXPLODING_CHEST(block)); // et on ajoute l'exploding chest ensuite afin qu'il soit recouvert..
     destruct();
   }
 }
@@ -254,6 +343,7 @@ public class EXPLODING_CHEST extends BASE_OBJECT {
     stopEnemy = true; // est ce que cet objet arrete les enemies
     stopPlayer = true; // est ce que cet objet arrete le joueur...
     movable = false; // est ce que l'objet est déplacable..
+    stopObject = true; // est ce que cet objet arrete les objets pouvant être kické ou poussés...
     Sprites = new int[]{9, 10, 11, 12, 13, 14};
     FrameTimings = IncrementFrameTimingArray(new int[]{5, 5, 5, 5, 5, 5});
     maxStepFrame = FrameTimings[FrameTimings.length-1]; // boucle sur la dernière frame
@@ -268,160 +358,67 @@ public class EXPLODING_CHEST extends BASE_OBJECT {
       stopFlame = false; // est ce que cet objet arrete les flammes
       stopEnemy = false; // est ce que cet objet arrete les enemies
       stopPlayer = false; // est ce que cet objet arrete le joueur...
+      stopObject = false; // est ce que cet objet arrete les objets pouvant être kické ou poussés...
     }
     if (duration == 0) {
-
       destruct();
     }
   }
 }
 
 
-public class ITEM_BOMB_UP extends BASE_OBJECT {
-
-  public ITEM_BOMB_UP(int block) {
-    super(block);
-    this.category = OBJECT_CATEGORY.ITEM;
-    bombDrop = true; // est ce qu'on peut déposer une bombe sur cet objet
-    stopFlame = false; // est ce que cet objet arrete les flammes
-    stopEnemy = false; // est ce que cet objet arrete les enemies
-    stopPlayer = false; // est ce que cet objet arrete le joueur...
-    movable = false; // est ce que l'objet est déplacable..
-
-    Sprites = new int[]{58, 65};
-    FrameTimings = IncrementFrameTimingArray(new int[]{4, 4});
-    maxStepFrame = FrameTimings[FrameTimings.length-1]; // boucle sur la dernière frame
-  }
-
-  public void flameHit() {
-    destruct();
-  }
-}
-
-public class ITEM_FLAME_UP extends BASE_OBJECT {
-
-  public ITEM_FLAME_UP(int block) {
-    super(block);
-    this.category = OBJECT_CATEGORY.ITEM;
-    bombDrop = true; // est ce qu'on peut déposer une bombe sur cet objet
-    stopFlame = false; // est ce que cet objet arrete les flammes
-    stopEnemy = false; // est ce que cet objet arrete les enemies
-    stopPlayer = false; // est ce que cet objet arrete le joueur...
-    movable = false; // est ce que l'objet est déplacable..
-
-    Sprites = new int[]{59, 66};
-    FrameTimings = IncrementFrameTimingArray(new int[]{4, 4});
-    maxStepFrame = FrameTimings[FrameTimings.length-1]; // boucle sur la dernière frame
-  }
-
-  public void flameHit() {
-    destruct();
-  }
-}
-
-public class ITEM_SPEED_UP extends BASE_OBJECT {
-
-  public ITEM_SPEED_UP(int block) {
-    super(block);
-    this.category = OBJECT_CATEGORY.ITEM;
-    bombDrop = true; // est ce qu'on peut déposer une bombe sur cet objet
-    stopFlame = false; // est ce que cet objet arrete les flammes
-    stopEnemy = false; // est ce que cet objet arrete les enemies
-    stopPlayer = false; // est ce que cet objet arrete le joueur...
-    movable = false; // est ce que l'objet est déplacable..
-    Sprites = new int[]{60, 67};
-    FrameTimings = IncrementFrameTimingArray(new int[]{4, 4});
-    maxStepFrame = FrameTimings[FrameTimings.length-1]; // boucle sur la dernière frame
-  }
-
-  public void flameHit() {
-    destruct();
-  }
-}
-
-public class ITEM_SPEED_DOWN extends BASE_OBJECT {
-
-  public ITEM_SPEED_DOWN(int block) {
-    super(block);
-    this.category = OBJECT_CATEGORY.ITEM;
-    bombDrop = true; // est ce qu'on peut déposer une bombe sur cet objet
-    stopFlame = false; // est ce que cet objet arrete les flammes
-    stopEnemy = false; // est ce que cet objet arrete les enemies
-    stopPlayer = false; // est ce que cet objet arrete le joueur...
-    movable = false; // est ce que l'objet est déplacable..
-    Sprites = new int[]{61, 68};
-    FrameTimings = IncrementFrameTimingArray(new int[]{4, 4});
-    maxStepFrame = FrameTimings[FrameTimings.length-1]; // boucle sur la dernière frame
-  }
-
-  public void flameHit() {
-    destruct();
-  }
-}
-
-public class ITEM_LIFE_UP extends BASE_OBJECT {
-
-  public ITEM_LIFE_UP(int block) {
-    super(block);
-    this.category = OBJECT_CATEGORY.ITEM;
-    bombDrop = true; // est ce qu'on peut déposer une bombe sur cet objet
-    stopFlame = false; // est ce que cet objet arrete les flammes
-    stopEnemy = false; // est ce que cet objet arrete les enemies
-    stopPlayer = false; // est ce que cet objet arrete le joueur...
-    movable = false; // est ce que l'objet est déplacable..
-    Sprites = new int[]{62, 69};
-    FrameTimings = IncrementFrameTimingArray(new int[]{4, 4});
-    maxStepFrame = FrameTimings[FrameTimings.length-1]; // boucle sur la dernière frame
-  }
-
-  public void flameHit() {
-    destruct();
-  }
-}
-
-public class ITEM_KICK extends BASE_OBJECT {
-
-  public ITEM_KICK(int block) {
-    super(block);
-    this.category = OBJECT_CATEGORY.ITEM;
-    bombDrop = true; // est ce qu'on peut déposer une bombe sur cet objet
-    stopFlame = false; // est ce que cet objet arrete les flammes
-    stopEnemy = false; // est ce que cet objet arrete les enemies
-    stopPlayer = false; // est ce que cet objet arrete le joueur...
-    movable = false; // est ce que l'objet est déplacable..
-    Sprites = new int[]{63, 70};
-    FrameTimings = IncrementFrameTimingArray(new int[]{4, 4});
-    maxStepFrame = FrameTimings[FrameTimings.length-1]; // boucle sur la dernière frame
-  }
-
-  public void flameHit() {
-    destruct();
-  }
-}
-
-public class ITEM_DETONATOR extends BASE_OBJECT {
-
-  public ITEM_DETONATOR(int block) {
-    super(block);
-    this.category = OBJECT_CATEGORY.ITEM;
-    bombDrop = true; // est ce qu'on peut déposer une bombe sur cet objet
-    stopFlame = false; // est ce que cet objet arrete les flammes
-    stopEnemy = false; // est ce que cet objet arrete les enemies
-    stopPlayer = false; // est ce que cet objet arrete le joueur...
-    movable = false; // est ce que l'objet est déplacable..
-    Sprites = new int[]{64, 71};
-    FrameTimings = IncrementFrameTimingArray(new int[]{4, 4});
-    maxStepFrame = FrameTimings[FrameTimings.length-1]; // boucle sur la dernière frame
-  }
-
-  public void flameHit() {
-    destruct();
-  }
-}
-
-public class SWITCH extends BASE_OBJECT {
+public class ITEM extends BASE_OBJECT {
   
-  public SWITCH(int block){
+  public ITEM(int block, String strType) {
+    super(block);
+    this.category = OBJECT_CATEGORY.ITEM; // pour simplifier la detection des characters qui "touchent" cet objet 
+
+    bombDrop = true; // est ce qu'on peut déposer une bombe sur cet objet
+    stopFlame = false; // est ce que cet objet arrete les flammes
+    stopEnemy = false; // est ce que cet objet arrete les enemies
+    stopPlayer = false; // est ce que cet objet arrete le joueur...
+    movable = false; // est ce que l'objet est déplacable..
+    stopObject = false; // est ce que cet objet arrete les objets pouvant être kické ou poussés...
+    itemType = strType;
+    switch (itemType) {
+    case "BOMB_UP":
+      Sprites = new int[]{58, 65};
+      break;
+    case "SPEED_UP":
+      Sprites = new int[]{60, 67};
+      break;
+    case "FLAME_UP":
+      Sprites = new int[]{59, 66};
+      break;
+    case "SPEED_DOWN":
+      Sprites = new int[]{61, 68};
+      break;
+    case "LIFE_UP":
+      Sprites = new int[]{62, 69};
+      break;
+    case "KICK":
+      Sprites = new int[]{63, 70};
+      break;
+    case "REMOTE":
+      Sprites = new int[]{64, 71};
+      break;
+    default:
+      Sprites = new int[]{74, 75}; // ne devrait jamais être appelé.
+      println("default : " + strType);
+    }
+    
+    FrameTimings = IncrementFrameTimingArray(new int[]{4, 4});
+    maxStepFrame = FrameTimings[FrameTimings.length-1]; // boucle sur la dernière frame
+  }
+
+  public void flameHit() {
+    destruct();
+  }
+}
+
+public class CAPSULE_SWITCH extends BASE_OBJECT {
+
+  public CAPSULE_SWITCH(int block) {
     super(block);
     this.category = OBJECT_CATEGORY.SWITCH;
     bombDrop = false; // est ce qu'on peut déposer une bombe sur cet objet
@@ -429,6 +426,7 @@ public class SWITCH extends BASE_OBJECT {
     stopEnemy = false; // est ce que cet objet arrete les enemies
     stopPlayer = false; // est ce que cet objet arrete le joueur...
     movable = false; // est ce que l'objet est déplacable..
+    stopObject = false; // est ce que cet objet arrete les objets pouvant être kické ou poussés...
 
     Sprites = new int[]{0};
     FrameTimings = new int[]{10};
@@ -440,26 +438,58 @@ public class SWITCH extends BASE_OBJECT {
   }
 }
 
-public class DYNAMITE extends BASE_OBJECT {
-  
-  public DYNAMITE(int block){
+public class MAGNET extends BASE_OBJECT {
+  private DIRECTION direction;
+  public MAGNET(int block, DIRECTION dir) {
     super(block);
-    this.category = OBJECT_CATEGORY.INTERACTIVE;
+    this.category = OBJECT_CATEGORY.STATIC;
     bombDrop = false; // est ce qu'on peut déposer une bombe sur cet objet
     stopFlame = true; // est ce que cet objet arrete les flammes
     stopEnemy = true; // est ce que cet objet arrete les enemies
     stopPlayer = true; // est ce que cet objet arrete le joueur...
     movable = false; // est ce que l'objet est déplacable..
-
-    Sprites = new int[]{4};
+    stopObject = true; // est ce que cet objet arrete les objets pouvant être kické ou poussés...
+    direction = dir;
+    updateSpriteDirection();
     FrameTimings = new int[]{10};
     maxStepFrame = 10; // boucle sur la dernière frame
   }
-  
-  public void flameHit() {
-    destruct();
-    
+
+  private void updateSpriteDirection() {
+    switch(direction) {
+    case LEFT:
+      Sprites = new int[]{7};
+      break;
+    case UP:
+      Sprites = new int[]{8};
+      break;
+    case RIGHT:
+      Sprites = new int[]{6};
+      break;
+    case DOWN :
+      Sprites = new int[]{5};
+      break;
+    default :
+    }
   }
-  
-  
+
+  public void flameHit() {
+
+    switch(direction) {
+    case LEFT:
+      direction = DIRECTION.UP;
+      break;
+    case UP:
+      direction = DIRECTION.RIGHT;
+      break;
+    case RIGHT:
+      direction = DIRECTION.DOWN;
+      break;
+    case DOWN :
+      direction = DIRECTION.LEFT;
+      break;
+    default :
+    }
+    updateSpriteDirection();
+  }
 }

@@ -9,7 +9,7 @@ enum CHARACTER_ACTION {
 }
 
 enum DIRECTION {
-  UP, LEFT, RIGHT, DOWN, UP_LEFT, UP_RIGHT, DOWN_LEFT, DOWN_RIGHT;
+  UP, LEFT, RIGHT, DOWN, UP_LEFT, UP_RIGHT, DOWN_LEFT, DOWN_RIGHT, NEUTRAL;
 }
 
 enum FLAME_TYPE {
@@ -18,11 +18,11 @@ enum FLAME_TYPE {
 }
 
 enum OBJECT_CATEGORY {
-  DEADLY, STATIC, ITEM, INTERACTIVE, SWITCH, DEFAULT;
+  DEADLY, STATIC, ITEM, BOMB, INTERACTIVE, SWITCH, DEFAULT;
 }
 
-enum CHARACTER_TYPE {
-  PLAYER, ENEMY;
+enum ENTITY_TYPE {
+  PLAYER, ENEMY, OBJECT;
 }
 
 public int[] convertStringArrayToIntArray(String[] strArray) {
@@ -38,17 +38,17 @@ public int[] convertStringArrayToIntArray(String[] strArray) {
 // w et h sont la longueur et la largeur de ce rectangle
 
 public class Rect {
-  int x; // position x
-  int y; // position y
+  float x; // position x
+  float y; // position y
   int w; // longueur (width)
   int h; // hauteur (height)
-  public Rect(int x, int y, int w, int h) {
+  public Rect(float x, float y, int w, int h) {
     this.x = x;
     this.y = y;
     this.w = w;
     this.h = h;
   }
-  public Rect move(DIRECTION dir, int step) {
+  public Rect move(DIRECTION dir, float step) {
     // renvoie un nouvel objet après avoir appliqué un décalage..
     switch(dir) {
     case UP:
@@ -77,10 +77,12 @@ public boolean isRectCollision(Rect rect1, Rect rect2) {
     || (rect1.y + rect1.h <= rect2.y)) ;// trop en haut
 }
 
-public int getBlockPositionFromCoordinate(int x, int y, boolean bDecal) {
+public int getBlockPositionFromCoordinate(float fx, float fy, boolean bDecal) {
   /* Cette fonction permet de calculer le numéro de bloc de la map en fonction de coordonnées x et y.
    utile pour recalculer la position des objets qui "bougent" et ainsi limiter les futurs tests de collisions
    a l'environnement proche.. */
+   int x = (int)fx;
+   int y = (int)fy;
   if (bDecal) {
     return floor((x + ( gpxMapTileSize / 2)) / gpxMapTileSize) + (((y + (gpxMapTileSize /2)) / gpxMapTileSize)* gMapBlockWidth);
   } else {
@@ -118,12 +120,12 @@ public class PENDING_BASE_CHARACTER {
 
 class Sprite {
   int TileID;
-  int xDecal;
-  int yDecal;
+  float xDecal;
+  float yDecal;
   int duration;
 
 
-  public Sprite(int TileID, int xDecal, int yDecal, int duration) {
+  public Sprite(int TileID, float xDecal, float yDecal, int duration) {
     this.TileID = TileID;
     this.xDecal = xDecal;
     this.yDecal = yDecal;
