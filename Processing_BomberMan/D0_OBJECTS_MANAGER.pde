@@ -1,11 +1,11 @@
-//public int gMapBlockWidth,gMapBlockHeight, gpxMapTileSize;
+//public int gMapBlockWidth,gMapBlockHeight, gpxMapTileSize; //<>// //<>// //<>// //<>//
 
 
 public class OBJECTS_MANAGER {
   private ArrayList<PImage> lObjectTilesImages  = new ArrayList<PImage>();
-  //private int gpxMapTileSize; // taille des tuiles en pixels (carré donc 16*16)
-  //private HashMap<Integer,MAP_OBJECT> OBJECTS  = new HashMap<Integer,MAP_OBJECT>();
-  ///private ArrayList<BASE_OBJECT> OBJECTS  = new ArrayList<BASE_OBJECT>();
+  private ArrayList<PImage> lExitDoorTilesImages  = new ArrayList<PImage>();
+  
+  
   private String strLevelMapInit[]; // on enregistre le contenu du level initial au cas ou si l'on doit réinitialiser la map.
   private ArrayList<ArrayList<BASE_OBJECT>> ObjectMapMatrix = new ArrayList<ArrayList<BASE_OBJECT>>();
 
@@ -13,15 +13,18 @@ public class OBJECTS_MANAGER {
   private ArrayList<PENDING_BASE_OBJECT> PendingObjectsForInclusion = new ArrayList<PENDING_BASE_OBJECT>();
 
   private GLC oParent;
-  //private int gMapBlockWidth, gMapBlockHeight;
+  private int remainingSwitchForExitOpen; // variable contenant le nombre de switch restant a enclancher pour ouvrir la sortie.
+  private BASE_OBJECT Exit_Door;
+  
   private int TilePerMapImage;
+  
   public OBJECTS_MANAGER(GLC oParent, PImage tileMapImg, String strMapPath) {
     this.oParent = oParent;
-
+    
     TilePerMapImage = 40; // FIXED tileMapImg.width / gpxMapTileSize; // nombre max de tuile par ligne en fonction de la largeur en pixel de l'image tileMap
     int totalSprite = 79;// codé en dur
     int pxObjectDecal = 5 * gpxMapTileSize; // a partir du 6ème bloc
-
+    
     for (int incr1 = 0; incr1 < totalSprite; incr1++) {
       int xSource = (incr1 % TilePerMapImage) * gpxMapTileSize; // position x et y dans l'image source tileMap
       int ySource = floor(incr1 / TilePerMapImage) * gpxMapTileSize + pxObjectDecal;
@@ -29,12 +32,19 @@ public class OBJECTS_MANAGER {
       i.copy(tileMapImg, xSource, ySource, gpxMapTileSize, gpxMapTileSize, 0, 0, gpxMapTileSize, gpxMapTileSize); // on copie le contenu
       lObjectTilesImages.add(i); // on stocke chaque miniature...
     }
-
+    pxObjectDecal = 3 * gpxMapTileSize; // a partir du 4ème bloc
+    for (int incr1 = 0; incr1 < 8; incr1++) { // uniquement que 7 images.. même si l'animation de sortie utilise 5 fois la même image pour ce "skin" de niveau..
+      int xSource = incr1  * (gpxMapTileSize * 3); // position x et y dans l'image source tileMap
+      int ySource = pxObjectDecal;
+      PImage i = createImage(gpxMapTileSize * 3, gpxMapTileSize * 2, ARGB); // on crée une image a la volée avec un canal alpha
+      i.copy(tileMapImg, xSource, ySource, gpxMapTileSize * 3, gpxMapTileSize*2, 0, 0, gpxMapTileSize*3, gpxMapTileSize*2); // on copie le contenu
+      lExitDoorTilesImages.add(i); // on stocke chaque miniature...
+    }
     // spawn des objets du niveau------------------------------------------------------------------------------------------------------------
     strLevelMapInit = loadStrings(strMapPath); // chaque valeur dans la liste est une ligne de texte..
     //gMapBlockHeight = strLevelMapInit.length;
     //gMapBlockWidth = split(strLevelMapInit[0], ';').length;
-    
+
     int maxMapBlock = gMapBlockHeight * gMapBlockWidth;
     for (int incr = 0; incr < maxMapBlock; incr++) {
       ObjectMapMatrix.add(new ArrayList<BASE_OBJECT>());
@@ -53,6 +63,7 @@ public class OBJECTS_MANAGER {
             case "102": // light off // 103 = light up
             case "103":
               AppendObjectForInclusion(block, new CAPSULE_SWITCH(block));
+              remainingSwitchForExitOpen++;
               break;
             case "104": // bomb explosion maximizer
               int[] powerDir = convertStringArrayToIntArray(split(items[incr3+1], ","));
@@ -69,16 +80,20 @@ public class OBJECTS_MANAGER {
               AppendObjectForInclusion(block, new DYNAMITE(block));
               break;
             case "107": // magnet down
-              AppendObjectForInclusion(block, new MAGNET(block,DIRECTION.DOWN));
+              AppendObjectForInclusion(block, new MAGNET(block, DIRECTION.DOWN));
               break;
             case "108": // magnet right
-            AppendObjectForInclusion(block, new MAGNET(block,DIRECTION.RIGHT));
+              AppendObjectForInclusion(block, new MAGNET(block, DIRECTION.RIGHT));
               break;
             case "109": // magnet left
-            AppendObjectForInclusion(block, new MAGNET(block,DIRECTION.LEFT));
+              AppendObjectForInclusion(block, new MAGNET(block, DIRECTION.LEFT));
               break;
             case "110": // magnet up
-            AppendObjectForInclusion(block, new MAGNET(block,DIRECTION.UP));
+              AppendObjectForInclusion(block, new MAGNET(block, DIRECTION.UP));
+              break;
+            case "EXIT":
+              Exit_Door = new EXIT_DOOR(block); // on garde une référence afin de pouvoir effectuer des actions spécifiques..
+              AppendObjectForInclusion(block, Exit_Door);
               break;
             }
           }
@@ -93,14 +108,7 @@ public class OBJECTS_MANAGER {
     AppendObjectForRemoval(FromBlock, c);
     AppendObjectForInclusion(ToBlock, c);
   }
-  /*
-  public void addObject(int block, BASE_OBJECT c) {
-   c.setController(this);
-   ObjectMapMatrix.get(block).add(c);
-   //ID++;
-   //return ID;
-   }
-   */
+  
   void AppendObjectForInclusion(int block, BASE_OBJECT o) {
     /* les objets ne peuvent être ajoutés dans la liste ObjectMapMatrix lorsque la boucle 
      stepFrame() s'execute sous peine de générer une exception..
@@ -119,6 +127,13 @@ public class OBJECTS_MANAGER {
     PendingObjectsForInclusion.clear();
   }
 
+  public void confirmSwitchEnabledForExit() {
+    remainingSwitchForExitOpen--; 
+    if (remainingSwitchForExitOpen <=0) {
+      // open the exit !!
+      ((EXIT_DOOR) Exit_Door).open();
+    }
+  }
 
   void AppendObjectForRemoval(int block, BASE_OBJECT o) {
     /* les objets ne peuvent être supprimé de la liste ObjectMapMatrix lorsque la boucle 
@@ -151,7 +166,7 @@ public class OBJECTS_MANAGER {
     }
     return lst;
   }
-  
+
   public ArrayList<BASE_CHARACTER> getCollidingCharactersFromRect(int block, Rect rect) {
     return Glc.CManager.getCollidingCharactersFromRect(block, rect);
   }
@@ -164,7 +179,7 @@ public class OBJECTS_MANAGER {
         for (BASE_OBJECT o : ObjectMapMatrix.get(nBlockDecal)) {
           switch (entity) {
           case PLAYER :
-            
+
             if (o.stopPlayer && isRectCollision(EntityRect, o.rect)) {
               if (gDebug) {
                 stroke(255, 153, 0);
@@ -209,6 +224,8 @@ public class OBJECTS_MANAGER {
   boolean IsMapStoppingFlameBlock(int nBlock) {
     return Glc.map.IsHardBlockStoppingFlame(nBlock);
   }
+  
+  
 
   public ArrayList<BASE_OBJECT>  getMapBlockPositionObjectList(int block) {
     return ObjectMapMatrix.get(block);
@@ -217,8 +234,14 @@ public class OBJECTS_MANAGER {
 
 
   public boolean IsMapStoppingObjectBlock(int block, Rect rect) {
-    return Glc.map.IsHardBlockStoppingEntityAtPosition(block, ENTITY_TYPE.OBJECT) && Glc.map.isStoppingHardBlockCollidingWithEntityRect(block, rect ,ENTITY_TYPE.OBJECT );
+    return Glc.map.IsHardBlockStoppingEntityAtPosition(block, ENTITY_TYPE.OBJECT) && Glc.map.isStoppingHardBlockCollidingWithEntityRect(block, rect, ENTITY_TYPE.OBJECT );
   }
+
+
+  public boolean IsMapStoppingObjectBlock(int block) {
+    return Glc.map.IsHardBlockStoppingEntityAtPosition(block, ENTITY_TYPE.OBJECT);
+  }
+
 
   public boolean IsObjectStoppingEntityAtPosition(int block, ENTITY_TYPE entity) {
 
@@ -277,7 +300,11 @@ public class OBJECTS_MANAGER {
     for (ArrayList<BASE_OBJECT> mapMatrix : ObjectMapMatrix) {
       for (BASE_OBJECT o : mapMatrix) {
         Sprite s = o.GetSpriteToRender();
-        image(lObjectTilesImages.get(s.TileID), s.xDecal, s.yDecal);
+        if (o.category == OBJECT_CATEGORY.EXIT_DOOR) {
+          image(lExitDoorTilesImages.get(s.TileID), s.xDecal - gpxMapTileSize , s.yDecal - gpxMapTileSize);
+        } else {
+          image(lObjectTilesImages.get(s.TileID), s.xDecal, s.yDecal);
+        }
       }
     }
   }
@@ -285,8 +312,6 @@ public class OBJECTS_MANAGER {
 
 
 // --------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
 
 public class BASE_OBJECT {
   public OBJECTS_MANAGER OM;
@@ -302,6 +327,7 @@ public class BASE_OBJECT {
   public int[] Sprites; // liste des sprites a utiliser dans l'animation de l'objet
   public int[] FrameTimings; // duration des animations
   public int maxStepFrame;
+  public int firstStepFrame = 0; // pour boucler l'animation..
   
   public boolean bombDrop; // est ce qu'on peut déposer une bombe sur cet objet
   public boolean stopFlame; // est ce que cet objet arrete les flammes
@@ -310,12 +336,19 @@ public class BASE_OBJECT {
   public boolean stopObject; // est ce que cet objet arrete les Items pouvant être "kické" ou "poussés"...
   public boolean kickable; // est ce que l'objet peut être kické
   public boolean movable; // est ce que l'objet peut être poussé/déplacé
+
+  // variable utilisés pour le suivi des déplacement par "kicking"
   public boolean isMovingByKick;
   public DIRECTION movingDirection;
-  
   private float movingSpeed;
+  private int movingBlockDecal; // peut être calculée a partir de moving direction mais evite les conditions switch inutiles a chaque frame..
+  private int KickStarterBlock;
+  private boolean KickAligned;
+  private int lastKickDelay; // evite les collision de kick pendant les frames très rapprochés (multi-magnet)
+
 
   public OBJECTS_MANAGER controller;
+
   public BASE_OBJECT( int block) {
     this.block = block;
     this.rect = new Rect((block % gMapBlockWidth) * gpxMapTileSize, floor(block / gMapBlockWidth) * gpxMapTileSize, gpxMapTileSize, gpxMapTileSize);
@@ -325,6 +358,7 @@ public class BASE_OBJECT {
     this.kickable = false;
     this.movable = false;
     this.isMovingByKick = false;
+    this.KickStarterBlock = 0;
   }
 
   public void setController(OBJECTS_MANAGER controller) {
@@ -353,73 +387,168 @@ public class BASE_OBJECT {
     controller = null;
   }
 
-  public void kick(DIRECTION dir, float speed) {
+
+  private boolean KickAnimation() {
+    Rect testRect = rect.move(movingDirection, movingSpeed); // vitesse par défaut
+    boolean mapColliding = controller.IsMapStoppingObjectBlock(block+movingBlockDecal, testRect);
+    boolean objectColliding = controller.isStoppingObjectsCollidingWithEntityRect(block+movingBlockDecal, testRect, ENTITY_TYPE.OBJECT, this);
+    if ((!mapColliding // si aucune collision avec un HardBlock de la map
+      && (!objectColliding) // si aucune collision avec un autre objet stoppant
+      && (controller.getCollidingCharactersFromRect(block, testRect).size()==0 || !stopPlayer ))) {// si aucun contact avec un Character
+      
+      rect = testRect; // deplacement ok
+
+      if (!KickAligned) tryAxisAlignOnKickAnimation(); // s'il y a un réalignement sur l'axe
+
+      checkMapMatrixPermutation();
+      return true;
+    } else if (!KickAligned) {
+      tryAxisAlignOnKickAnimation();
+      checkMapMatrixPermutation();
+      return KickAligned;
+    } else {
+      isMovingByKick = false;
+      if (objectColliding){
+        for (BASE_OBJECT object : controller.getMapBlockPositionObjectList(block+movingBlockDecal)){
+          if (object.category == OBJECT_CATEGORY.MAGNET){
+           playSFX(SOUND_ID.METAL_HIT,1);
+            break;
+          }
+        }
+      }else if (mapColliding){
+        playSFX(SOUND_ID.WALL_HIT,1);
+      }
+      return false;
+    }
+  }
+
+  private void tryAxisAlignOnKickAnimation() {
+    float pxDecal;
+    switch(movingDirection) {
+    case LEFT :
+    case RIGHT:
+      pxDecal = getGridMapAxisDecalage(rect.y);
+      if (pxDecal == 0) {
+        KickAligned = true;
+        return ;
+      } else if (pxDecal < 0) {
+        if (abs(pxDecal)<movingSpeed) {
+          rect.y+= -pxDecal;
+        } else {
+          rect.y+= movingSpeed;
+        }
+      } else if (pxDecal > 0) {
+        if (abs(pxDecal)<movingSpeed) {
+          rect.y+= -pxDecal;
+        } else {
+          rect.y+= -movingSpeed;
+        }
+      }
+      break;
+    case UP:
+    case DOWN:
+      pxDecal = getGridMapAxisDecalage(rect.x);
+      if (pxDecal == 0) {
+        KickAligned = true;
+        return;
+      } else if (pxDecal < 0) {
+        if (abs(pxDecal)<movingSpeed) {
+          rect.x+= -pxDecal;
+        } else {
+          rect.x+= movingSpeed;
+        }
+      } else {// pxDecal > 0
+        if (abs(pxDecal)<movingSpeed) {
+          rect.x+= -pxDecal;
+        } else {
+          rect.x+= -movingSpeed;
+        }
+      }
+      break;
+    default:
+    }
+
+    //checkMapMatrixPermutation();
+  }
+
+  public boolean tryKicking(DIRECTION direction, float speed) {//, ENTITY_TYPE entityType, int KickerBlockPosition) {
     /* verifier pour chaque step si : 
      - l'objet ne tente pas d'aller vers un HB de la map
      - l'objet n'est pas en contact avec d'autre objet stoppant
      - l'objet n'est pas en collision avec des characters (enemy + player)
      */
-    if (!kickable) {
-      return;
-    }
-    if (!isMovingByKick) { // on enregistre si l'action vient de demarrer pour pouvoir utiliser le stepFrame..
+    if (kickable  // // si l'objet est  kickable
+      && (lastKickDelay == 0)
+      && (KickStarterBlock != block) &&
+      ( !isSameKickingAxis(direction))) {  // ET déjà dans la même direction OU l'objet est toujours sur le même block ou a été initié le kick précédent)
+      //!isMovingByKick ||
+      //direction != movingDirection
+      //println("tryKicking(, KickStarterBlock " + KickStarterBlock + ", block " + block + ")");
       isMovingByKick = true;
-      
-      movingDirection = dir;
+      movingDirection = direction;
       movingSpeed = speed;
-    }
-    int blockDecal;
-    switch (movingDirection) {
-    case LEFT :
-      blockDecal = -1;
-      break;
-    case UP :
-      blockDecal = -gMapBlockWidth;
-      break;
-    case DOWN :
-      blockDecal = +gMapBlockWidth;
-      break;
-    case RIGHT : 
-      blockDecal = +1;
-      break;
-    default:
-      blockDecal = 0;
-    }
-
-    Rect testRect = rect.move(movingDirection, speed); // vitesse par défaut
-    if ((!controller.IsMapStoppingObjectBlock(block+blockDecal, testRect) // si aucune collision avec un HardBlock de la map
-      && (!controller.isStoppingObjectsCollidingWithEntityRect(block+blockDecal,testRect, ENTITY_TYPE.OBJECT, this)) // si aucune collision avec un autre objet stoppant
-      && (controller.getCollidingCharactersFromRect(block, testRect).size()==0 || !stopPlayer ))){// si aucun contact avec un Character
-      rect = testRect; // deplacement ok
-      checkMapMatrixPermutation();
+      lastKickDelay = 8;
+      KickStarterBlock = block;
+      //println("tryKicking( DIRECTION " + direction + ", speed " + speed + ", KickStarterBlock " + KickStarterBlock + ", block " + block + ")");
+      // println("rect(" + rect.x + ", " + rect.y + ")" );
+      KickAligned  = false ;
+      switch (movingDirection) {
+      case LEFT :
+        movingBlockDecal = -1;
+        break;
+      case UP :
+        movingBlockDecal = -gMapBlockWidth;
+        break;
+      case DOWN :
+        movingBlockDecal = +gMapBlockWidth;
+        break;
+      case RIGHT : 
+        movingBlockDecal = +1;
+        break;
+      default:
+        movingBlockDecal = 0;
+      }
+      return true;
+      //return KickAnimation(); // l'action peut être effectuée mais peut etre que l'action est bloquée par un mur ?
     } else {
-      isMovingByKick = false;
+
+      return false;
     }
-    
   }
 
-
-  /*   ((controller.getCollidingCharactersFromRect(block, testRect).size() == 0)
-   &&  */
-
-  /*&& (!controller.isObjectsCollidingWithObjectRect(block, testRect))*/
+  /*
   public void push(DIRECTION dir) {
-  }
+   }
+   */
 
   public void stepFrame() {
     stepFrame++;
     if (stepFrame > maxStepFrame) {
-      stepFrame = 0;
+      stepFrame = firstStepFrame;
     }
+
     if (isMovingByKick) {
-      kick(movingDirection, movingSpeed);
+      if (lastKickDelay>0) lastKickDelay--;
+      KickAnimation();
     }
   }
-  /*
-  public boolean tryMoveRight(){
-   
-   }
-   */
+
+  private boolean isSameKickingAxis(DIRECTION direction) {
+    switch (direction) {
+    case LEFT :
+    case  RIGHT :
+      if (movingDirection == DIRECTION.LEFT || movingDirection == DIRECTION.RIGHT) return true; 
+      break;
+    case  UP :
+    case  DOWN :
+      if (movingDirection == DIRECTION.UP || movingDirection == DIRECTION.DOWN) return true; 
+      break;
+    default:
+      return true;
+    }
+    return false;
+  }
+
   public Sprite GetSpriteToRender() {
     int nSprite;
     int index = Arrays.binarySearch(FrameTimings, stepFrame);

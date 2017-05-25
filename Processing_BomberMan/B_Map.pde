@@ -1,4 +1,4 @@
-//<>// //<>// //<>//
+//<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>//
 public int gMapBlockWidth, gMapBlockHeight, gpxMapTileSize;
 
 class Map {
@@ -16,12 +16,13 @@ class Map {
   public Map(GLC oParent, PImage tileMapImg, int pxMapTileSize, int MaxTile, String strMapPath) {
     this.oParent= oParent;
     gpxMapTileSize = pxMapTileSize;
-
+    
     int TilePerMapImage = 40; // FIXED tileMapImg.width / gpxMapTileSize; // nombre max de tuile par ligne en fonction de la largeur en pixel de l'image tileMap
     //this.oParent = oParent;
     /*  on va remplir d'image miniature "tuile" : lHardBlockTilesImages
      la tileMap à systematiquement une largeur en pixel égale à un multiple de la taille d'une tuile    
      exemple de map..
+     
      23;23;44;50;23;23;23;23;23;23;23;23;23;23;23;23;23;23;23;78;79;80;23;23;23;23;23;23;23;23
      23;23;45;60;23;23;23;23;23;23;23;23;23;23;23;23;23;23;23;78;79;80;23;23;23;23;23;23;23;23
      23;23;46;61;43;43;43;43;43;43;43;43;43;43;43;43;43;37;23;78;79;80;12;12;12;12;12;12;11;23

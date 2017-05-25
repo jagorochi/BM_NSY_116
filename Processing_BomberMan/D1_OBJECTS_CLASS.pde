@@ -1,10 +1,13 @@
 
 public class BOMB extends BASE_OBJECT {
   private int power;
-  private int duration;
+  private int CountDownExplosion;
+  private int surroundingFlameHitDelay;
   private boolean bExploded;
+  private ArrayList<BASE_OBJECT> FlameHitPendingObjects = new ArrayList<BASE_OBJECT>(); // liste des objets qui sont touchés par les flammes..
+
   public BASE_CHARACTER dropper;  // permet de suivre le compteur de bombe active du character qui a droppé la bombe.. 
-  public BOMB(int block, BASE_CHARACTER dropper, int power, int duration) {
+  public BOMB(int block, BASE_CHARACTER dropper, int power, int countDown) {
     super(block); // appel vers le constructeur parent
     this.category = OBJECT_CATEGORY.BOMB;
     bombDrop = false; // est ce qu'on peut déposer une bombe sur cet objet
@@ -16,8 +19,9 @@ public class BOMB extends BASE_OBJECT {
     this.kickable = true; // est ce que l'objet peut être kické.
     bExploded = false;
     this.dropper = dropper;   // character qui a droppé la bombe
-    this.duration = duration; // frame duration
+    this.CountDownExplosion = countDown; // frame duration
     this.power = power;
+    this.surroundingFlameHitDelay = -1;// en attente
     // definition de l'animation
     Sprites = new int[]{51, 52, 51, 50}; // liste des sprites a utiliser dans l'animation de l'objet
     FrameTimings = new int[]{20, 40, 60, 80}; // duration des animations
@@ -35,9 +39,19 @@ public class BOMB extends BASE_OBJECT {
         stopEnemy = true; // // on bloque les mouvements des monstres..
       }
     }
-    duration--;
-    if (duration == 0) {
+    CountDownExplosion--;
+    if (CountDownExplosion == 0) {
       flameHit();
+    }
+    if (surroundingFlameHitDelay>-1) {
+      surroundingFlameHitDelay--;
+      if (surroundingFlameHitDelay == 0) {
+        for (BASE_OBJECT o : FlameHitPendingObjects) {
+          o.flameHit();
+        }
+        FlameHitPendingObjects.clear();
+        destruct();
+      }
     }
   }
 
@@ -49,7 +63,7 @@ public class BOMB extends BASE_OBJECT {
       return;
     }
     bExploded = true; // 
-
+    playSFX(SOUND_ID.BOMB_EXPLODE1,0.5);
     if (dropper != null) {
       dropper.DeleteBombRef(this); // on prévient le character qui a droppé cette bombe Qu'elle vient d'exploser : il peut en dropper une a nouveau
       dropper = null;
@@ -67,7 +81,7 @@ public class BOMB extends BASE_OBJECT {
     }
     // maintenant on créer des objets "flammes autour" :)
     // ----------------------------------------------------------------------------------------
-    ArrayList<BASE_OBJECT> FlameHitPendingObjects = new ArrayList<BASE_OBJECT>(); // liste des objets qui sont touchés par les flammes.. 
+
     // centre de la flamme
     controller.AppendObjectForInclusion(block, new FLAME(block, FLAME_TYPE.CENTER));
     FlameHitPendingObjects.addAll(controller.getMapBlockPositionObjectList(block));
@@ -80,11 +94,7 @@ public class BOMB extends BASE_OBJECT {
     // vers le bas
     FlameHitPendingObjects.addAll(deployFlame(powerDir[3], gMapBlockWidth, FLAME_TYPE.VERTICAL, FLAME_TYPE.BORDER_DOWN));
     // on "flameHit" tous les objets qui étaient sur le chemin des flammes :)
-    for (BASE_OBJECT o : FlameHitPendingObjects) {
-      o.flameHit();
-    }
-    FlameHitPendingObjects.clear();
-    destruct();
+    surroundingFlameHitDelay = 3;
   }
 
   private ArrayList<BASE_OBJECT> deployFlame(int pwr, int decal, FLAME_TYPE arm, FLAME_TYPE border) {
@@ -141,7 +151,7 @@ public class DYNAMITE extends BASE_OBJECT {
     Sprites = new int[]{4};
     FrameTimings = new int[]{10};
     maxStepFrame = 10; // boucle sur la dernière frame
-    duration = 30;
+    duration = 38;
   }
 
 
@@ -149,20 +159,34 @@ public class DYNAMITE extends BASE_OBJECT {
     super.stepFrame();
     if (bExploded) {
       duration--;
-      if (duration == 0) {
-        deploy2ndWaveFlame();
+      /*
+      if (duration == 6) {
+       deploy2ndWaveFlame();
+       destruct();
+       }*/
+      if (duration == 6) {
+        playSFX(SOUND_ID.BOMB_EXPLODE6,0.5);
+        DeployWaveExplosion(block - 2);
+      } else if (duration == 4) {
+        DeployWaveExplosion(block - (2*gMapBlockWidth));
+      } else if (duration == 2) {
+        DeployWaveExplosion(block + 2);
+      } else if (duration == 0) {
+        DeployWaveExplosion(block + (2*gMapBlockWidth));
         destruct();
       }
     }
   }
-
+  /*
   private void deploy2ndWaveFlame() {
-    DeployWaveExplosion(block - 2);
-    DeployWaveExplosion(block - (2*gMapBlockWidth));
-    DeployWaveExplosion(block + 2);
-    DeployWaveExplosion(block + (2*gMapBlockWidth));
-  }
-
+   
+   playSFX(SOUND_ID.BOMB_EXPLODE6);
+   DeployWaveExplosion(block - 2);
+   DeployWaveExplosion(block - (2*gMapBlockWidth));
+   DeployWaveExplosion(block + 2);
+   DeployWaveExplosion(block + (2*gMapBlockWidth));
+   }
+   */
 
   public void flameHit() {
     if (bExploded) {
@@ -171,6 +195,7 @@ public class DYNAMITE extends BASE_OBJECT {
     bExploded = true; // 
     // maintenant on créer des objets "flammes autour" :)
     // ----------------------------------------------------------------------------------------
+    playSFX(SOUND_ID.BOMB_EXPLODE2,0.5);
     DeployWaveExplosion(block);
   }
   private void DeployWaveExplosion(int blockDecal) {
@@ -368,7 +393,7 @@ public class EXPLODING_CHEST extends BASE_OBJECT {
 
 
 public class ITEM extends BASE_OBJECT {
-  
+
   public ITEM(int block, String strType) {
     super(block);
     this.category = OBJECT_CATEGORY.ITEM; // pour simplifier la detection des characters qui "touchent" cet objet 
@@ -406,7 +431,7 @@ public class ITEM extends BASE_OBJECT {
       Sprites = new int[]{74, 75}; // ne devrait jamais être appelé.
       println("default : " + strType);
     }
-    
+
     FrameTimings = IncrementFrameTimingArray(new int[]{4, 4});
     maxStepFrame = FrameTimings[FrameTimings.length-1]; // boucle sur la dernière frame
   }
@@ -417,7 +442,7 @@ public class ITEM extends BASE_OBJECT {
 }
 
 public class CAPSULE_SWITCH extends BASE_OBJECT {
-
+  private boolean switched;
   public CAPSULE_SWITCH(int block) {
     super(block);
     this.category = OBJECT_CATEGORY.SWITCH;
@@ -427,69 +452,200 @@ public class CAPSULE_SWITCH extends BASE_OBJECT {
     stopPlayer = false; // est ce que cet objet arrete le joueur...
     movable = false; // est ce que l'objet est déplacable..
     stopObject = false; // est ce que cet objet arrete les objets pouvant être kické ou poussés...
-
+    switched = false;
     Sprites = new int[]{0};
     FrameTimings = new int[]{10};
     maxStepFrame = 10; // boucle sur la dernière frame
   }
 
   public void flameHit() {
-    Sprites[0] = 1; // on change l'image en "SWITCH ON"
+    if (!switched) {
+      switched = true;
+      playSFX(SOUND_ID.COMMAND_SET,1);
+      Sprites[0] = 1; // on change l'image en "SWITCH ON"
+      controller.confirmSwitchEnabledForExit();
+    }
   }
 }
 
 public class MAGNET extends BASE_OBJECT {
-  private DIRECTION direction;
+  private DIRECTION MagnetizeDirection;
+  private int magnetDecal;
+  private int maxDistanceAction;
+  private int pauseMagnet;
   public MAGNET(int block, DIRECTION dir) {
     super(block);
-    this.category = OBJECT_CATEGORY.STATIC;
+    this.category = OBJECT_CATEGORY.MAGNET;
     bombDrop = false; // est ce qu'on peut déposer une bombe sur cet objet
     stopFlame = true; // est ce que cet objet arrete les flammes
     stopEnemy = true; // est ce que cet objet arrete les enemies
     stopPlayer = true; // est ce que cet objet arrete le joueur...
     movable = false; // est ce que l'objet est déplacable..
     stopObject = true; // est ce que cet objet arrete les objets pouvant être kické ou poussés...
-    direction = dir;
-    updateSpriteDirection();
+    MagnetizeDirection = dir;
+    updateMagnetDirection();
     FrameTimings = new int[]{10};
     maxStepFrame = 10; // boucle sur la dernière frame
   }
 
-  private void updateSpriteDirection() {
-    switch(direction) {
+
+  public void stepFrame() {
+    super.stepFrame();
+    if (pauseMagnet == 0) {
+      magnetize();
+    } else {
+      pauseMagnet--;
+    }
+  }
+
+  private void magnetize() {
+    for (int decal = 1; decal <=maxDistanceAction; decal++) {
+      int pos = block + (decal * magnetDecal);
+      if (!controller.IsMapStoppingObjectBlock(pos)) {
+        // if (decal > 1) {
+        for (BASE_OBJECT o : controller.getMapBlockPositionObjectList(pos)) {
+          if (o.category == OBJECT_CATEGORY.BOMB) {
+
+           if (o.tryKicking(MagnetizeDirection, 2)) playSFX(SOUND_ID.MAGNET3,1);
+          }
+        }
+        // }
+      } else {
+        maxDistanceAction = decal-1;
+        break;
+      }
+    }
+  }
+
+
+  private void updateMagnetDirection() {
+    maxDistanceAction = 5; // a chaque nouvelle orientation on mets a jour la distance d'action..
+    switch(MagnetizeDirection) {
     case LEFT:
-      Sprites = new int[]{7};
+      Sprites = new int[]{6};
+      magnetDecal = 1;
       break;
     case UP:
-      Sprites = new int[]{8};
+      Sprites = new int[]{5};
+      magnetDecal = gMapBlockWidth;
       break;
     case RIGHT:
-      Sprites = new int[]{6};
+      Sprites = new int[]{7};
+      magnetDecal = -1;
       break;
     case DOWN :
-      Sprites = new int[]{5};
+      Sprites = new int[]{8};
+      magnetDecal = -gMapBlockWidth;
       break;
     default :
     }
   }
 
-  public void flameHit() {
 
-    switch(direction) {
+
+  public void flameHit() {
+    if (pauseMagnet > 0) {
+      return;
+    }
+    playSFX(SOUND_ID.SWORD,1);
+    pauseMagnet = 10;
+    switch(MagnetizeDirection) {
     case LEFT:
-      direction = DIRECTION.UP;
+      MagnetizeDirection = DIRECTION.UP;
       break;
     case UP:
-      direction = DIRECTION.RIGHT;
+      MagnetizeDirection = DIRECTION.RIGHT;
       break;
     case RIGHT:
-      direction = DIRECTION.DOWN;
+      MagnetizeDirection = DIRECTION.DOWN;
       break;
     case DOWN :
-      direction = DIRECTION.LEFT;
+      MagnetizeDirection = DIRECTION.LEFT;
       break;
     default :
     }
-    updateSpriteDirection();
+    updateMagnetDirection();
+  }
+}
+
+
+public class EXIT_DOOR extends BASE_OBJECT {
+  private DOOR_STATUS status;
+  private int duration;
+  public EXIT_DOOR(int block) {
+    super(block);
+    this.category = OBJECT_CATEGORY.EXIT_DOOR;
+
+    bombDrop = false; // est ce qu'on peut déposer une bombe sur cet objet
+    stopFlame = false; // est ce que cet objet arrete les flammes
+    stopEnemy = true; // est ce que cet objet arrete les enemies
+    stopPlayer = true; // est ce que cet objet arrete le joueur...
+    movable = false; // est ce que l'objet est déplacable..
+    stopObject = true; // est ce que cet objet arrete les objets pouvant être kické ou poussés...
+    duration = 0;
+    updateStatus(DOOR_STATUS.LOCKED);
+  }
+
+
+  public void stepFrame() {
+    super.stepFrame();
+    switch (status) {
+    case LOCKED:
+      break;
+    case HIT:
+      duration--;
+      if (duration == 0) {
+        updateStatus(DOOR_STATUS.LOCKED);
+      }
+      break;
+
+    case OPEN:
+      duration--;
+      if (duration == 0) { // le joueur peut marcher sur le bloc de la sortie
+        stopPlayer = false; // est ce que cet objet arrete le joueur...
+        stopFlame = false; // est ce que cet objet arrete les flammes
+      }
+      break;
+    }
+  }
+
+  public void flameHit() {
+    println("EXIT_DOOR flameHit !");
+    if (status == DOOR_STATUS.LOCKED) {
+      updateStatus(DOOR_STATUS.HIT);
+    }
+  }
+
+  public void open() {
+    //println("EXIT_DOOR OPEN !");
+    playSFX(SOUND_ID.SECRET,1);
+    updateStatus(DOOR_STATUS.OPEN);
+  }
+
+  private void updateStatus(DOOR_STATUS newStatus) {
+    status = newStatus;
+    stepFrame = 0;
+    switch(newStatus) {
+    case LOCKED:
+      Sprites = new int[]{0};
+      FrameTimings = new int[]{10};
+      maxStepFrame = 10; // boucle sur la dernière frame
+      firstStepFrame = 0;
+      break;
+    case HIT:
+      Sprites = new int[]{1, 0};
+      FrameTimings = new int[]{5, 10};
+      maxStepFrame = 10; // boucle sur la dernière frame
+      firstStepFrame = 0;
+      duration = 120;
+      break;
+    case OPEN:
+      Sprites = new int[]{0, 2, 3, 4, 5, 6, 7};
+      FrameTimings = IncrementFrameTimingArray(new int[]{10, 10, 10, 10, 10, 10, 10});
+      maxStepFrame = FrameTimings[FrameTimings.length-1]; // boucle sur la dernière frame
+      firstStepFrame = maxStepFrame-9; // boucle sur la dernière image...
+
+      duration = 70;
+    }
   }
 }

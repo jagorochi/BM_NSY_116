@@ -246,6 +246,7 @@ public class BASE_CHARACTER {
   protected Rect rect ;
   protected float walkSpeed;
   protected Sprite spriteToRender;
+  protected boolean kickingAbility;
   protected boolean IsKicking; // variable utilisée pour vérifier si l'utilisateur est en train de "kicker"..
   public CHARACTERS_MANAGER controller;
   protected  ArrayList<BASE_OBJECT> ActiveDroppedBombs;// liste des bombes droppées
@@ -262,6 +263,7 @@ public class BASE_CHARACTER {
     walkSpeed = 1.0;
     bControl = true;
     IsKicking = false;
+    kickingAbility = false;
     spriteToRender = new Sprite(1, rect.x, rect.y, 0); // default..
     for (CHARACTER_ACTION Action : CHARACTER_ACTION.values()) {
       SpriteAnimation sa = DefineSpriteAnimationFromAction(Action);
@@ -356,6 +358,7 @@ public class BASE_CHARACTER {
     BASE_OBJECT bomb = new BOMB(blockPosition, this, flamePower, duration);
     ActiveDroppedBombs.add(bomb); // on retient la référence de cette bombe..
     controller.addObject(blockPosition, bomb);
+    playSFX(SOUND_ID.BOMB_DROP1,0.5);
   }
 
   //-----------------------------------------------------------------------------------------------------------------------------
@@ -423,30 +426,31 @@ public class BASE_CHARACTER {
   }
 
   private void tryKickingObject(DIRECTION direction, float force) {
-    if (IsKicking) {
+    if (kickingAbility && IsKicking) {
       int blockDecal;
       switch (direction) {
       case LEFT:
-        blockDecal = blockPosition - 1;
+        blockDecal =  -1;
         break;
       case RIGHT:
-        blockDecal = blockPosition + 1;
+        blockDecal =  1;
         break;
       case UP:
-        blockDecal = blockPosition - gMapBlockWidth;
+        blockDecal =  -gMapBlockWidth;
         break;
       case DOWN:
-        blockDecal = blockPosition + gMapBlockWidth;
+        blockDecal = gMapBlockWidth;
         break;
-      default :
+      default:
         return;
       }
       
-      for (BASE_OBJECT object : controller.getMapBlockPositionObjectList(blockDecal)) {
+      for (BASE_OBJECT object : controller.getMapBlockPositionObjectList(blockPosition + blockDecal)) {
         if (object.kickable) {
         //if (object.category == OBJECT_CATEGORY.BOMB){
           
-          object.kick(direction, force);
+          if(object.tryKicking(direction, force)) playSFX(SOUND_ID.ZOL,1);
+          
         }
       }
     }

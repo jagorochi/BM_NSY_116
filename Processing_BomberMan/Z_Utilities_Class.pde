@@ -14,11 +14,13 @@ enum DIRECTION {
 
 enum FLAME_TYPE {
   CENTER, HORIZONTAL, VERTICAL, BORDER_LEFT, BORDER_RIGHT, BORDER_UP, BORDER_DOWN;
-  
+}
+enum DOOR_STATUS {
+  LOCKED, HIT, OPEN;
 }
 
 enum OBJECT_CATEGORY {
-  DEADLY, STATIC, ITEM, BOMB, INTERACTIVE, SWITCH, DEFAULT;
+  DEADLY, STATIC, ITEM, BOMB, INTERACTIVE, SWITCH, DEFAULT, EXIT_DOOR, MAGNET;
 }
 
 enum ENTITY_TYPE {
@@ -36,7 +38,6 @@ public int[] convertStringArrayToIntArray(String[] strArray) {
 // la classe suivante défini un rectangle
 // x et y définissent le coin supérieur gauche du rectangle
 // w et h sont la longueur et la largeur de ce rectangle
-
 public class Rect {
   float x; // position x
   float y; // position y
@@ -69,6 +70,8 @@ public class Rect {
   }
 }
 
+
+
 // cette fonction booléenne permets de vérifier si 2 rectangle s'intersectent
 public boolean isRectCollision(Rect rect1, Rect rect2) {
   return !((rect1.x >= rect2.x + rect2.w)      // trop à droite
@@ -81,12 +84,12 @@ public int getBlockPositionFromCoordinate(float fx, float fy, boolean bDecal) {
   /* Cette fonction permet de calculer le numéro de bloc de la map en fonction de coordonnées x et y.
    utile pour recalculer la position des objets qui "bougent" et ainsi limiter les futurs tests de collisions
    a l'environnement proche.. */
-   int x = (int)fx;
-   int y = (int)fy;
+  int x = (int)fx;
+  int y = (int)fy;
   if (bDecal) {
-    return floor((x + ( gpxMapTileSize / 2)) / gpxMapTileSize) + (((y + (gpxMapTileSize /2)) / gpxMapTileSize)* gMapBlockWidth);
+    return ((x + ( gpxMapTileSize / 2)) / gpxMapTileSize) + (((y + (gpxMapTileSize /2)) / gpxMapTileSize)* gMapBlockWidth);
   } else {
-    return floor(x  / gpxMapTileSize) + ((y  / gpxMapTileSize) * gMapBlockWidth);
+    return (x  / gpxMapTileSize) + ((y  / gpxMapTileSize) * gMapBlockWidth);
   }
 }
 
@@ -94,6 +97,19 @@ public Rect getCoordinateFromBlockPosition(int block) {
   // calcul un Rect a partir de la position d'un block dans la matrice de jeu.  
   return new Rect((block % gMapBlockWidth) * gpxMapTileSize, floor(block / gMapBlockWidth) * gpxMapTileSize, gpxMapTileSize, gpxMapTileSize);
 }
+
+public float getGridMapAxisDecalage(float xPos) {
+  float mod = xPos % gpxMapTileSize;
+  if (mod == 0) {
+    return 0;
+  } else if (mod > (gpxMapTileSize/2)) {
+    return mod - gpxMapTileSize;
+  } else {
+    return mod;
+  }
+}
+
+
 
 public class PENDING_BASE_OBJECT { //QUICKFIX
   // utilisé pour les objets qui doivent être retirés de manière différés a la fin de la boucle "stepFrame"
@@ -194,59 +210,191 @@ public int[] IncrementFrameTimingArray(int[] oldArray) {
 // ------------------------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------------------------
 public class Controls {
-  public  boolean left = false;
-  public  boolean right = false;
-  public  boolean up = false;
-  public  boolean down = false;
-  public  boolean a = false;
-  public  boolean b = false;
-  public  boolean c = false;
+  private int leftCounter, rightCounter, upCounter, downCounter, aCounter, bCounter, cCounter;
+  private boolean leftPressed, rightPressed, upPressed, downPressed; 
+  public boolean leftHold, rightHold, upHold, downHold, aHold, bHold, cHold;
+  // private int[] directionCounter = {0, 0, 0, 0};
+  public  boolean leftKP = false;
+  public  boolean rightKP = false;
+  public  boolean upKP = false;
+  public  boolean downKP = false;
+  public  boolean aKP = false;
+  public  boolean bKP = false;
+  public  boolean cKP = false;
 
   public void keyPressed() {
     if (keyCode == DOWN) {
-      down = true;
+      downPressed = true;
     }
     if (keyCode == UP) {
-      up = true;
+      upPressed = true;
     }
     if (keyCode == LEFT) {
-      left = true;
+      leftPressed = true;
     }
     if (keyCode == RIGHT) {
-      right = true;
+      rightPressed = true;
     }
     if (keyCode == 65 || keyCode == 97 || keyCode == 96) {
-      a = true;
+      aHold = true;
     }
     if (keyCode == 90 || keyCode == 122) {
-      b = true;
+      bHold = true;
     }
     if (keyCode == 69 || keyCode == 101) {
-      c = true;
+      cHold = true;
     }
   }
 
   public void keyReleased() {
     if (keyCode == DOWN) {
-      down = false;
+      downPressed = false;
+      downCounter = 0;// reactivation du compteur ok
     }
     if (keyCode == UP) {
-      up = false;
+      upPressed = false;
+      upCounter = 0;// reactivation du compteur ok
     }
     if (keyCode == LEFT) {
-      left = false;
+      leftPressed = false;
+      
+      leftCounter = 0;// reactivation du compteur ok
     }
     if (keyCode == RIGHT) {
-      right = false;
+      rightPressed = false;
+      rightCounter = 0;// reactivation du compteur ok
     }
+
     if (keyCode == 65 || keyCode == 97 || keyCode == 96) {
-      a = false;
+      aHold = false;
     }
     if (keyCode == 90 || keyCode == 122) {
-      b = false;
+      bHold = false;
     }
     if (keyCode == 69 || keyCode == 101) {
-      c = false;
+      cHold = false;
+    }
+  }
+
+  public void stepFrame() {
+    // afin d'eviter les conflits dans les directions que presse le joueur, on va prioriser la derniere direction enclenché en cas de conflit, et remettre à annuler les autres..
+    // il faut donc compter le nombre de frame durant lequel les boutons sont pressés..
+    leftKP = false; 
+    rightKP = false;
+    upKP = false;
+    downKP = false;
+    leftHold = false;
+    rightHold = false;
+    upHold = false;
+    downHold = false;
+
+
+    if (leftPressed && leftCounter != -1) {
+      leftCounter++;
+      leftHold = true;
+      if (leftCounter == 1) { // si c'est la première frame enclenchée de cette direction et que les autres directions sont déjà enclenchées : on n'en tient plus compte jusqu'a ce que le joueur les aient relachés
+        if (rightCounter > 0)  rightCounter = -1; 
+        if (upCounter > 0)  upCounter = -1;
+        if (downCounter > 0)  downCounter = -1;
+        leftKP = true;
+      }
+    }
+
+    if (upPressed && upCounter != -1) {
+      upCounter++;
+      upHold = true;
+      if (upCounter == 1) { // si c'est la première frame enclenchée de cette direction et que les autres directions sont déjà enclenchées : on n'en tient plus compte jusqu'a ce que le joueur les aient relachés
+        if (rightCounter > 0)  rightCounter = -1; 
+        if (leftCounter > 0)  leftCounter = -1;
+        if (downCounter > 0)  downCounter = -1;
+        upKP = true;
+      }
+    }
+
+    if (rightPressed && rightCounter != -1) {
+      rightCounter++;
+      rightHold = true;
+      if (rightCounter == 1) { // si c'est la première frame enclenchée de cette direction et que les autres directions sont déjà enclenchées : on n'en tient plus compte jusqu'a ce que le joueur les aient relachés
+        if (leftCounter > 0)  leftCounter = -1;
+        if (upCounter > 0)  upCounter = -1;
+        if (downCounter > 0)  downCounter = -1;
+        rightKP = true;
+      }
+    }
+
+    if (downPressed && downCounter != -1) {
+      downCounter++;
+      downHold = true;
+      if (downCounter == 1) { // si c'est la première frame enclenchée de cette direction et que les autres directions sont déjà enclenchées : on n'en tient plus compte jusqu'a ce que le joueur les aient relachés
+        if (rightCounter > 0)  rightCounter = -1;
+        if (upCounter > 0)  upCounter = -1;
+        if (leftCounter > 0)  leftCounter = -1;
+        downKP = true; // 1ère frame ou le joueur presse la direction
+      }
+    }
+
+    /*
+    int pos = 0;
+     for (int incr = 1; incr < 4; incr++) {
+     if (directionCounter[incr] > directionCounter[ipos]) {
+     pos = incr;
+     }
+     }
+     
+     switch (pos) {
+     case 0:
+     leftHold = true;
+     if (directionCounter[0] == 0) leftKP = true;
+     break;
+     case 1:
+     upHold = true;
+     if (directionCounter[1] == 0) upKP = true;
+     break;
+     case 2:
+     rightHold = true;
+     if (directionCounter[2] == 0) rightKP = true;
+     break;
+     case 3:
+     downHold = true;
+     if (directionCounter[3] == 0) downKP = true;
+     }*/
+
+
+
+    if (aHold) {
+      aCounter++;
+      if (aCounter == 1) {
+        aKP = true;
+      } else {
+        aKP = false;
+      }
+    } else {
+      aCounter = 0;
+      aKP = false;
+    }
+
+    if (bHold) {
+      bCounter++;
+      if (bCounter == 1) {
+        bKP = true;
+      } else {
+        bKP = false;
+      }
+    } else {
+      bCounter = 0;
+      bKP = false;
+    }
+
+    if (cHold) {
+      cCounter++;
+      if (cCounter == 1) {
+        cKP = true;
+      } else {
+        cKP = false;
+      }
+    } else {
+      cCounter = 0;
+      cKP = false;
     }
   }
 }

@@ -1,0 +1,128 @@
+import processing.sound.*;
+EnumMap<SOUND_ID, SoundFile> soundBank = new EnumMap<SOUND_ID, SoundFile>(SOUND_ID.class);
+//ArrayList<SoundFile> soundBank = new ArrayList<SoundFile>(); // Processing ne semble pas vouloir que l'on puisse créer des fichier son dans une classe....
+
+void populateSoundBank() {
+  String[] strSoundBank = new String[]{"ONE_UP", 
+    "BOMB_DROP1", 
+    "BOMB_DROP2", 
+    "FLAME",
+    "BOMB_EXPLODE1", 
+    "BOMB_EXPLODE2", 
+    "BOMB_EXPLODE3", 
+    "BOMB_EXPLODE4", 
+    "BOMB_EXPLODE5", 
+    "BOMB_EXPLODE6", 
+    "BOMB_KICK", 
+    "BOMBERMAN_DYING", 
+    "BOUNCE1", 
+    "BOUNCE2", 
+    "BUTTON", 
+    "CHEST_OPEN", 
+    "COMMAND_CANCEL", 
+    "COMMAND_SET", 
+    "CONFIRM", 
+    "CURSOR1", 
+    "CURSOR2", 
+    "DASH", 
+    "ENEMY_DYING", 
+    "FALL", 
+    "HAMMER", 
+    "HEART", 
+    "HOLD", 
+    "HOOKSHOT", 
+    "ITEM_GET", 
+    "JUMP", 
+    "LAZER1", 
+    "LAZER2", 
+    "MAGNET1", 
+    "MAGNET2", 
+    "MAGNET3", 
+    "MESSAGE1", 
+    "MESSAGE2", 
+    "METAL_HIT", 
+    "PAUSE", 
+    "RESET", 
+    "SECRET", 
+    "SELECT", 
+    "SLIP", 
+    "STOMP", 
+    "SWORD",
+    "TELEPORT", 
+    "THROW", 
+    "TIME_UP", 
+    "TIMECOUNT", 
+    "WALK", 
+    "WALL_HIT",
+    "WARP", 
+    "ZOL"};
+    int index = 0;
+    for (SOUND_ID id : SOUND_ID.values()) {
+       soundBank.put(id, new SoundFile(this, strSoundBank[index] + ".wav"));      
+      index++;
+    }
+    
+    
+}
+
+public void playSFX(SOUND_ID id, float rate){
+  soundBank.get(id).play(rate);
+}
+
+
+enum SOUND_ID {
+  ONE_UP,
+  BOMB_DROP1, 
+    BOMB_DROP2, 
+    FLAME,
+    BOMB_EXPLODE1, 
+    BOMB_EXPLODE2, 
+    BOMB_EXPLODE3, 
+    BOMB_EXPLODE4, 
+    BOMB_EXPLODE5, 
+    BOMB_EXPLODE6, 
+    BOMB_KICK, 
+    BOMBERMAN_DYING, 
+    BOUNCE1, 
+    BOUNCE2, 
+    BUTTON, 
+    CHEST_OPEN, 
+    COMMAND_CANCEL, 
+    COMMAND_SET, 
+    CONFIRM, 
+    CURSOR1, 
+    CURSOR2, 
+    DASH, 
+    ENEMY_DYING, 
+    FALL, 
+    HAMMER, 
+    HEART, 
+    HOLD, 
+    HOOKSHOT, 
+    ITEM_GET, 
+    JUMP, 
+    LAZER1, 
+    LAZER2, 
+    MAGNET1, 
+    MAGNET2, 
+    MAGNET3, 
+    MESSAGE1, 
+    MESSAGE2, 
+    METAL_HIT, 
+    PAUSE, 
+    RESET, 
+    SECRET, 
+    SELECT, 
+    SLIP, 
+    STOMP, 
+    SWORD,
+    TELEPORT, 
+    THROW, 
+    TIME_UP, 
+    TIMECOUNT, 
+    WALK, 
+    WALL_HIT,
+    WARP, 
+    ZOL;
+    public static int COUNT = CHARACTER_ACTION.values().length;
+}
