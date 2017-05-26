@@ -1,7 +1,6 @@
-//<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>//
-public int gMapBlockWidth, gMapBlockHeight, gpxMapTileSize;
+public int gMapBlockWidth, gMapBlockHeight, gpxMapTileSize; //<>//
 
-class Map {
+class MAP {
   int[] tableau= new int[]{1, 2, 2, 2, 2};
   //private int gMapBlockWidth;
   //private int gMapBlockHeight;
@@ -13,7 +12,7 @@ class Map {
   private int playerScrollDecalX, playerScrollDecalY;
 
   private GLC oParent;
-  public Map(GLC oParent, PImage tileMapImg, int pxMapTileSize, int MaxTile, String strMapPath) {
+  public MAP(GLC oParent, PImage tileMapImg, int pxMapTileSize, int MaxTile, String strMapPath) {
     this.oParent= oParent;
     gpxMapTileSize = pxMapTileSize;
     

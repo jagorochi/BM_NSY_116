@@ -3,10 +3,9 @@ EnumMap<SOUND_ID, SoundFile> soundBank = new EnumMap<SOUND_ID, SoundFile>(SOUND_
 //ArrayList<SoundFile> soundBank = new ArrayList<SoundFile>(); // Processing ne semble pas vouloir que l'on puisse créer des fichier son dans une classe....
 
 void populateSoundBank() {
-  String[] strSoundBank = new String[]{"ONE_UP", 
+  String[] strSoundBank = new String[]{ 
     "BOMB_DROP1", 
     "BOMB_DROP2", 
-    "FLAME",
     "BOMB_EXPLODE1", 
     "BOMB_EXPLODE2", 
     "BOMB_EXPLODE3", 
@@ -27,6 +26,7 @@ void populateSoundBank() {
     "DASH", 
     "ENEMY_DYING", 
     "FALL", 
+    "FIRE", 
     "HAMMER", 
     "HEART", 
     "HOLD", 
@@ -41,40 +41,38 @@ void populateSoundBank() {
     "MESSAGE1", 
     "MESSAGE2", 
     "METAL_HIT", 
+    "ONE_UP", 
     "PAUSE", 
     "RESET", 
     "SECRET", 
     "SELECT", 
     "SLIP", 
     "STOMP", 
-    "SWORD",
+    "SWORD", 
     "TELEPORT", 
     "THROW", 
     "TIME_UP", 
     "TIMECOUNT", 
     "WALK", 
-    "WALL_HIT",
+    "WALL_HIT", 
     "WARP", 
     "ZOL"};
-    int index = 0;
-    for (SOUND_ID id : SOUND_ID.values()) {
-       soundBank.put(id, new SoundFile(this, strSoundBank[index] + ".wav"));      
-      index++;
-    }
-    
-    
+  int index = 0;
+ 
+  for (SOUND_ID id : SOUND_ID.values()) {
+    soundBank.put(id, new SoundFile(this, strSoundBank[index] + ".wav"));      
+    index++;
+  } 
 }
 
-public void playSFX(SOUND_ID id, float rate){
+public void playSFX(SOUND_ID id, float rate) {
   soundBank.get(id).play(rate);
 }
 
 
 enum SOUND_ID {
-  ONE_UP,
   BOMB_DROP1, 
     BOMB_DROP2, 
-    FLAME,
     BOMB_EXPLODE1, 
     BOMB_EXPLODE2, 
     BOMB_EXPLODE3, 
@@ -95,6 +93,7 @@ enum SOUND_ID {
     DASH, 
     ENEMY_DYING, 
     FALL, 
+    FIRE, 
     HAMMER, 
     HEART, 
     HOLD, 
@@ -109,20 +108,21 @@ enum SOUND_ID {
     MESSAGE1, 
     MESSAGE2, 
     METAL_HIT, 
+    ONE_UP, 
     PAUSE, 
     RESET, 
     SECRET, 
     SELECT, 
     SLIP, 
     STOMP, 
-    SWORD,
+    SWORD, 
     TELEPORT, 
     THROW, 
     TIME_UP, 
     TIMECOUNT, 
     WALK, 
-    WALL_HIT,
+    WALL_HIT, 
     WARP, 
     ZOL;
-    public static int COUNT = CHARACTER_ACTION.values().length;
+  public static int COUNT = CHARACTER_ACTION.values().length;
 }

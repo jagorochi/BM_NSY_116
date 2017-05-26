@@ -15,7 +15,7 @@ public class CHARACTERS_MANAGER {
   public CHARACTERS_MANAGER(GLC oParent, PImage tileMapImg, String strMapPath) {
     this.oParent = oParent;
     // recuperation des sprites de taille 16*32 ------------------------------------------------------------------------------------------------------------
-    int totalSprite = 172; // nombre total de sprite "character" (bomberman + monstres)
+    int totalSprite = 200; // nombre total de sprite "character" (bomberman + monstres)
     spriteWidth = gpxMapTileSize;
     SpriteHeight = gpxMapTileSize * 2;
     int TilePerWidth = tileMapImg.width / spriteWidth; // nombre max de tuile par ligne en fonction de la largeur en pixel de l'image tileMap
@@ -63,9 +63,10 @@ public class CHARACTERS_MANAGER {
         if (strMapLineContent[incr2].contains("'")) {
           String[] items = split(strMapLineContent[incr2], "'");
           for ( String item : items) {
+            int block = (incr1*gMapBlockWidth)+incr2;
             switch(item) {
             case "111": // bomberman
-              int block = (incr1*gMapBlockWidth)+incr2;
+
               BM = new BOMBERMAN( block); // on doit garder une reference pour le rendu de la map
               AppendCharacterForInclusion(block, BM);
               // addObject(BM);
@@ -76,6 +77,11 @@ public class CHARACTERS_MANAGER {
             case "113": // enemie 2
               break;
             case "114": // enemie 3
+              break;
+            case "115": // enemie 3
+              break;
+            case "116": // CHICKEN
+              AppendCharacterForInclusion(block, new CHICKEN(block));
               break;
             }
           }
@@ -149,6 +155,9 @@ public class CHARACTERS_MANAGER {
           stroke(0, 0, 255);
           Rect r = getCoordinateFromBlockPosition(o.blockPosition);
           rect(r.x+1, r.y+1, r.w-2, r.h-2);
+
+          /*stroke(255,0,0);
+           rect(o.hitBox.x, o.hitBox.y, o.hitBox.h, o.hitBox.h);*/
         }
       }
     }
@@ -232,6 +241,23 @@ public class CHARACTERS_MANAGER {
     }
     return lst;
   }
+
+  /*
+  public ArrayList<BASE_CHARACTER> getTouchingCharactersFromRect(int block, Rect rect) {
+   ArrayList<BASE_CHARACTER> lst = new ArrayList<BASE_CHARACTER>();
+   for (int yDecal = -1; yDecal <=1; yDecal++) {
+   for (int xDecal = -1; xDecal <=1; xDecal++) {
+   int nBlockDecal =  block + (yDecal * gMapBlockWidth) + xDecal;
+   for (BASE_CHARACTER o : CharacterMapMatrix.get(nBlockDecal)) {
+   if (isRectCollision(rect, o.hitBox)) {
+   lst.add(o);
+   }
+   }
+   }
+   }
+   return lst;
+   }
+   */
 }
 
 
@@ -241,9 +267,10 @@ public class BASE_CHARACTER {
   protected EnumMap<CHARACTER_ACTION, SpriteAnimation> lAnimation = new EnumMap<CHARACTER_ACTION, SpriteAnimation>(CHARACTER_ACTION.class);
   protected CHARACTER_ACTION previousAction = CHARACTER_ACTION.LOOK_FRONT_WAIT; // par défaut
   protected int frameCounter = 0;
+  protected ENTITY_TYPE entityType;
   public int  blockPosition;
   protected boolean bControl = true;
-  protected Rect rect ;
+  protected Rect rect; //,hitBox ;
   protected float walkSpeed;
   protected Sprite spriteToRender;
   protected boolean kickingAbility;
@@ -252,7 +279,11 @@ public class BASE_CHARACTER {
   protected  ArrayList<BASE_OBJECT> ActiveDroppedBombs;// liste des bombes droppées
   protected int flamePower;
   protected int DropBombCapacity;
+  private int destructCountDown = -1;
 
+  protected int IA_IdleCount = 60; // variable utilisée pour la gestion de l'IA
+  protected DIRECTION IA_direction = DIRECTION.NEUTRAL;
+  
   public BASE_CHARACTER(int blockPosition) {
     // on construit les animations
     this.blockPosition = blockPosition;
@@ -260,10 +291,12 @@ public class BASE_CHARACTER {
     ActiveDroppedBombs = new ArrayList<BASE_OBJECT>();
 
     rect = new Rect((blockPosition % gMapBlockWidth) * gpxMapTileSize, floor(blockPosition / gMapBlockWidth) * gpxMapTileSize, gpxMapTileSize, gpxMapTileSize);
+    // this.hitBox = new Rect(rect.x+6, rect.y+6, rect.w-12, rect.h-12);// le rectangle de collision est toujours plus petit..
     walkSpeed = 1.0;
     bControl = true;
     IsKicking = false;
     kickingAbility = false;
+
     spriteToRender = new Sprite(1, rect.x, rect.y, 0); // default..
     for (CHARACTER_ACTION Action : CHARACTER_ACTION.values()) {
       SpriteAnimation sa = DefineSpriteAnimationFromAction(Action);
@@ -280,6 +313,16 @@ public class BASE_CHARACTER {
 
   public void stepFrame() {
     // comportement & actions à définir dans les classes spécialisées
+    if (destructCountDown>-1) {
+      destructCountDown--;
+      if (destructCountDown == 0) {
+        destruct();
+      }
+    }
+  }
+
+  public void SetDectructCountDown(int destructCountDown) {
+    this.destructCountDown = destructCountDown;
   }
 
   public void destruct() {
@@ -358,7 +401,7 @@ public class BASE_CHARACTER {
     BASE_OBJECT bomb = new BOMB(blockPosition, this, flamePower, duration);
     ActiveDroppedBombs.add(bomb); // on retient la référence de cette bombe..
     controller.addObject(blockPosition, bomb);
-    playSFX(SOUND_ID.BOMB_DROP1,0.5);
+    playSFX(SOUND_ID.BOMB_DROP1, 0.5);
   }
 
   //-----------------------------------------------------------------------------------------------------------------------------
@@ -372,12 +415,12 @@ public class BASE_CHARACTER {
 
   protected boolean tryRightStep() {
     Rect testRect = rect.move(DIRECTION.RIGHT, walkSpeed); // position a tester : on avance vers la droite
-    if (!controller.isStoppingBlockOrObjectCollidingWithEntityRect(blockPosition, blockPosition+1, testRect, ENTITY_TYPE.PLAYER)) { // si pas de block qui bloque dans la direction voulue (droite)
+    if (!controller.isStoppingBlockOrObjectCollidingWithEntityRect(blockPosition, blockPosition+1, testRect, entityType)) { // si pas de block qui bloque dans la direction voulue (droite)
       rect = testRect; // on ecrase vu que le test a reussi//rect.x +=walkSpeed; // on avance vers la droite
       float yDiff = controller.getYdifference(blockPosition+1, rect.y); // est ce qu'on est tout de même bien dans l'axe du couloir ?
       if (yDiff < 0) { // si on est trop vers le bas
-        if (controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition+1 + gMapBlockWidth, ENTITY_TYPE.PLAYER)
-          || controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition + gMapBlockWidth, ENTITY_TYPE.PLAYER)) { // s'il y a un bloc juste en bas ou bas/droite
+        if (controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition+1 + gMapBlockWidth, entityType)
+          || controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition + gMapBlockWidth, entityType)) { // s'il y a un bloc juste en bas ou bas/droite
           if (abs(yDiff)< walkSpeed) { // si la distance est inférieure a la vitesse de marche
             rect.y -= abs(yDiff); // on se recale pile dans l'axe du couloir
           } else {
@@ -385,8 +428,8 @@ public class BASE_CHARACTER {
           }
         }
       } else if (yDiff>0) { // si on est trop vers le haut
-        if (controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition+1 - gMapBlockWidth, ENTITY_TYPE.PLAYER) ||
-          controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition - gMapBlockWidth, ENTITY_TYPE.PLAYER)) { // s'il y a un block juste en haut ou haut/droite
+        if (controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition+1 - gMapBlockWidth, entityType) ||
+          controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition - gMapBlockWidth, entityType)) { // s'il y a un block juste en haut ou haut/droite
           if (abs(yDiff)< walkSpeed) { // si la distance est inférieure à la vitesse de marche
             rect.y += abs(yDiff); // on se recale pile dans l'axe du couloir
           } else {
@@ -400,16 +443,16 @@ public class BASE_CHARACTER {
     } else { //--------------------------------------------  le déplacement vers la droite est bloquée : on essaye de contourner..
       float yDiff = controller.getYdifference(blockPosition+1, rect.y); // est ce que l'on est plus vers le haut ou le bas du bloc
       if (yDiff < 0) { // on est plus vers le bas
-        if (!controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition + gMapBlockWidth, ENTITY_TYPE.PLAYER) 
-          && !controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition + gMapBlockWidth+1, ENTITY_TYPE.PLAYER)) { // s'il n'y a aucun block juste au dessous + dessous/droite 
+        if (!controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition + gMapBlockWidth, entityType) 
+          && !controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition + gMapBlockWidth+1, entityType)) { // s'il n'y a aucun block juste au dessous + dessous/droite 
           rect.y +=1; // on descend
           checkMapMatrixPermutation(); // comme l'action de déplacement à réussi et que le Rect du Character a été modifié il est possible qu'il est changé de block sur la matrice de la map
           updateSpriteAnimationFrame(CHARACTER_ACTION.LOOK_DOWN_WALK); // on mets à jour l'animation mais comme le personnage descend on change l'animation ou il marche vers le bas
           return true;// action de déplacement réussi
         }
       } else if (yDiff > 0) { // si on est plus vers le haut
-        if (!controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition - gMapBlockWidth, ENTITY_TYPE.PLAYER) 
-          && !controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition - gMapBlockWidth+1, ENTITY_TYPE.PLAYER)) { // s'il n'y a un block juste au dessus + dessus/droite
+        if (!controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition - gMapBlockWidth, entityType) 
+          && !controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition - gMapBlockWidth+1, entityType)) { // s'il n'y a un block juste au dessus + dessus/droite
           rect.y -=1; // on monte
           checkMapMatrixPermutation(); // comme l'action de déplacement à réussi et que le Rect du Character a été modifié il est possible qu'il est changé de block sur la matrice de la map
           updateSpriteAnimationFrame( CHARACTER_ACTION.LOOK_UP_WALK);// on mets à jour l'animation mais comme le personnage monte on change l'animation ou il marche vers le haut
@@ -417,10 +460,10 @@ public class BASE_CHARACTER {
         }
       }
     }
-    
+
     updateSpriteAnimationFrame(CHARACTER_ACTION.LOOK_RIGHT_WALK);// on marche sur place...
     // verification de l'action KICK !
-    
+
     tryKickingObject(DIRECTION.RIGHT, 1.5);
     return false; // aucun déplacement...
   }
@@ -444,13 +487,12 @@ public class BASE_CHARACTER {
       default:
         return;
       }
-      
+
       for (BASE_OBJECT object : controller.getMapBlockPositionObjectList(blockPosition + blockDecal)) {
         if (object.kickable) {
-        //if (object.category == OBJECT_CATEGORY.BOMB){
-          
-          if(object.tryKicking(direction, force)) playSFX(SOUND_ID.ZOL,1);
-          
+          //if (object.category == OBJECT_CATEGORY.BOMB){
+
+          if (object.tryKicking(direction, force)) playSFX(SOUND_ID.ZOL, 1);
         }
       }
     }
@@ -462,12 +504,12 @@ public class BASE_CHARACTER {
   protected boolean tryLeftStep() {
     // voir la fonction tryLeftRight pour plus de description.. cette methode est relativement similaire
     Rect testRect = rect.move(DIRECTION.LEFT, walkSpeed); // position a tester : on avance vers la droite
-    if (!controller.isStoppingBlockOrObjectCollidingWithEntityRect(blockPosition, blockPosition-1, testRect, ENTITY_TYPE.PLAYER)) {
+    if (!controller.isStoppingBlockOrObjectCollidingWithEntityRect(blockPosition, blockPosition-1, testRect, entityType)) {
       rect = testRect; // TEST réussi on écrase
       float yDiff = controller.getYdifference(blockPosition-1, rect.y);
       if (yDiff < 0) {
-        if (controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition-1 + gMapBlockWidth, ENTITY_TYPE.PLAYER)
-          ||controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition + gMapBlockWidth, ENTITY_TYPE.PLAYER)) {
+        if (controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition-1 + gMapBlockWidth, entityType)
+          ||controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition + gMapBlockWidth, entityType)) {
           if (abs(yDiff)< walkSpeed) {
             rect.y -= abs(yDiff); // +
           } else {
@@ -475,8 +517,8 @@ public class BASE_CHARACTER {
           }
         }
       } else if (yDiff>0) {
-        if (controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition -1 - gMapBlockWidth, ENTITY_TYPE.PLAYER)
-          ||controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition  - gMapBlockWidth, ENTITY_TYPE.PLAYER)) {
+        if (controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition -1 - gMapBlockWidth, entityType)
+          ||controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition  - gMapBlockWidth, entityType)) {
           if (abs(yDiff)< walkSpeed) {
             rect.y += abs(yDiff);
           } else {
@@ -490,8 +532,8 @@ public class BASE_CHARACTER {
     } else {
       float yDiff = controller.getYdifference(blockPosition-1, rect.y);
       if (yDiff < 0) { // plus bas
-        if (!controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition + gMapBlockWidth, ENTITY_TYPE.PLAYER) 
-          && !controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition + gMapBlockWidth-1, ENTITY_TYPE.PLAYER)) {
+        if (!controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition + gMapBlockWidth, entityType) 
+          && !controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition + gMapBlockWidth-1, entityType)) {
           rect.y +=1;
           checkMapMatrixPermutation(); // comme l'action de déplacement à réussi et que le Rect du Character a été modifié il est possible qu'il est changé de block sur la matrice de la map
           updateSpriteAnimationFrame( CHARACTER_ACTION.LOOK_DOWN_WALK);
@@ -499,8 +541,8 @@ public class BASE_CHARACTER {
         }
       } else if (yDiff > 0) {
 
-        if (!controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition - gMapBlockWidth, ENTITY_TYPE.PLAYER) 
-          && !controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition - gMapBlockWidth-1, ENTITY_TYPE.PLAYER)) {
+        if (!controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition - gMapBlockWidth, entityType) 
+          && !controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition - gMapBlockWidth-1, entityType)) {
           rect.y -=1;
           checkMapMatrixPermutation(); // comme l'action de déplacement à réussi et que le Rect du Character a été modifié il est possible qu'il est changé de block sur la matrice de la map
           updateSpriteAnimationFrame( CHARACTER_ACTION.LOOK_UP_WALK);
@@ -517,12 +559,12 @@ public class BASE_CHARACTER {
   protected boolean tryUpStep() {
     // voir la fonction tryLeftRight pour plus de description.. cette methode est relativement similaire
     Rect testRect = rect.move(DIRECTION.UP, walkSpeed); // position a tester : on avance vers la droite
-    if ( !controller.isStoppingBlockOrObjectCollidingWithEntityRect(blockPosition, blockPosition- gMapBlockWidth, testRect, ENTITY_TYPE.PLAYER)) {
+    if ( !controller.isStoppingBlockOrObjectCollidingWithEntityRect(blockPosition, blockPosition- gMapBlockWidth, testRect, entityType)) {
       rect = testRect; // TEST réussi on écrase
       float xDiff = controller.getXdifference(blockPosition- gMapBlockWidth, rect.x);
       if (xDiff > 0) {
-        if (controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition - 1 - gMapBlockWidth, ENTITY_TYPE.PLAYER) 
-          || controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition -1, ENTITY_TYPE.PLAYER)) {
+        if (controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition - 1 - gMapBlockWidth, entityType) 
+          || controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition -1, entityType)) {
           if (abs(xDiff)< walkSpeed) {
             rect.x += abs(xDiff); // +
           } else {
@@ -530,8 +572,8 @@ public class BASE_CHARACTER {
           }
         }
       } else if (xDiff<0) {
-        if (controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition + 1 - gMapBlockWidth, ENTITY_TYPE.PLAYER)
-          ||controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition +1, ENTITY_TYPE.PLAYER)) {
+        if (controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition + 1 - gMapBlockWidth, entityType)
+          ||controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition +1, entityType)) {
           if (abs(xDiff)< walkSpeed) {
             rect.x -= abs(xDiff);
           } else {
@@ -545,8 +587,8 @@ public class BASE_CHARACTER {
     } else {
       float xDiff = controller.getXdifference(blockPosition- gMapBlockWidth, rect.x);
       if (xDiff > 0) { 
-        if (!controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition - 1, ENTITY_TYPE.PLAYER) 
-          && !controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition - gMapBlockWidth-1, ENTITY_TYPE.PLAYER)) {
+        if (!controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition - 1, entityType) 
+          && !controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition - gMapBlockWidth-1, entityType)) {
           rect.x -=1;
           checkMapMatrixPermutation(); // comme l'action de déplacement à réussi et que le Rect du Character a été modifié il est possible qu'il est changé de block sur la matrice de la map
           updateSpriteAnimationFrame( CHARACTER_ACTION.LOOK_LEFT_WALK);
@@ -554,8 +596,8 @@ public class BASE_CHARACTER {
         }
       } else if (xDiff < 0) {
 
-        if (!controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition +1, ENTITY_TYPE.PLAYER) 
-          && !controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition - gMapBlockWidth+1, ENTITY_TYPE.PLAYER)) {
+        if (!controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition +1, entityType) 
+          && !controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition - gMapBlockWidth+1, entityType)) {
           rect.x +=1;
           checkMapMatrixPermutation(); // comme l'action de déplacement à réussi et que le Rect du Character a été modifié il est possible qu'il est changé de block sur la matrice de la map
           updateSpriteAnimationFrame( CHARACTER_ACTION.LOOK_RIGHT_WALK);
@@ -572,12 +614,12 @@ public class BASE_CHARACTER {
   protected boolean tryDownStep() {
     // voir la fonction tryLeftRight pour plus de description.. cette methode est relativement similaire
     Rect testRect = rect.move(DIRECTION.DOWN, walkSpeed); // position a tester : on avance vers la droite
-    if (!controller.isStoppingBlockOrObjectCollidingWithEntityRect(blockPosition, blockPosition +  gMapBlockWidth, testRect, ENTITY_TYPE.PLAYER)) {
+    if (!controller.isStoppingBlockOrObjectCollidingWithEntityRect(blockPosition, blockPosition +  gMapBlockWidth, testRect, entityType)) {
       rect = testRect; // TEST réussi on écrase
       float xDiff = controller.getXdifference(blockPosition+ gMapBlockWidth, rect.x);
       if (xDiff > 0) {
-        if (controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition - 1 + gMapBlockWidth, ENTITY_TYPE.PLAYER) 
-          || controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition -1, ENTITY_TYPE.PLAYER)) {
+        if (controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition - 1 + gMapBlockWidth, entityType) 
+          || controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition -1, entityType)) {
           if (abs(xDiff)< walkSpeed) {
             rect.x += abs(xDiff); // +
           } else {
@@ -585,8 +627,8 @@ public class BASE_CHARACTER {
           }
         }
       } else if (xDiff<0) {
-        if (controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition + 1 + gMapBlockWidth, ENTITY_TYPE.PLAYER)
-          ||controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition +1, ENTITY_TYPE.PLAYER)) {
+        if (controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition + 1 + gMapBlockWidth, entityType)
+          ||controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition +1, entityType)) {
           if (abs(xDiff)< walkSpeed) {
             rect.x -= abs(xDiff);
           } else {
@@ -600,8 +642,8 @@ public class BASE_CHARACTER {
     } else {
       float xDiff = controller.getXdifference(blockPosition+ gMapBlockWidth, rect.x);
       if (xDiff > 0) { 
-        if (!controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition - 1, ENTITY_TYPE.PLAYER) 
-          && !controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition + gMapBlockWidth-1, ENTITY_TYPE.PLAYER)) {
+        if (!controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition - 1, entityType) 
+          && !controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition + gMapBlockWidth-1, entityType)) {
           rect.x -=1;
           checkMapMatrixPermutation(); // comme l'action de déplacement à réussi et que le Rect du Character a été modifié il est possible qu'il est changé de block sur la matrice de la map
           updateSpriteAnimationFrame( CHARACTER_ACTION.LOOK_LEFT_WALK);
@@ -609,8 +651,8 @@ public class BASE_CHARACTER {
         }
       } else if (xDiff < 0) {
 
-        if (!controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition +1, ENTITY_TYPE.PLAYER) 
-          && !controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition + gMapBlockWidth+1, ENTITY_TYPE.PLAYER)) {
+        if (!controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition +1, entityType) 
+          && !controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition + gMapBlockWidth+1, entityType)) {
           rect.x +=1;
           checkMapMatrixPermutation(); // comme l'action de déplacement à réussi et que le Rect du Character a été modifié il est possible qu'il est changé de block sur la matrice de la map
           updateSpriteAnimationFrame( CHARACTER_ACTION.LOOK_RIGHT_WALK);
@@ -622,6 +664,122 @@ public class BASE_CHARACTER {
     // verification de l'action KICK !
     tryKickingObject(DIRECTION.DOWN, 1.5);
     return false;
+  }
+
+  protected boolean isTouchingDeadlyItems() {
+    for (BASE_OBJECT o : controller.getTouchingObjectsWithCharacterRect(blockPosition, rect)) {
+      switch (o.category) {
+      case DEADLY :
+        return true;
+
+      case EXIT_DOOR:
+        updateSpriteAnimationFrame(CHARACTER_ACTION.VICTORY);
+        bControl = false;
+        break;
+      case ITEM :
+        switch (o.itemType) {
+        case "BOMB_UP":
+          DropBombCapacity++;
+          if (DropBombCapacity>5) {
+            DropBombCapacity = 5;
+          }
+          break;
+        case "SPEED_UP":
+          walkSpeed+=0.2;
+          if (walkSpeed>2.0) {
+            walkSpeed = 2;
+          }
+          break;
+        case "FLAME_UP":
+          flamePower++;
+          if (flamePower>10) {
+            flamePower = 10;
+          }
+          break;
+        case "SPEED_DOWN":
+          if (walkSpeed<0.6) {
+            walkSpeed = 0.6; // faut pas abuser non plus ^^
+          }
+          break;
+        case "LIFE_UP":
+          playSFX(SOUND_ID.ONE_UP, 1);
+          break;
+        case "KICK":
+          kickingAbility = true;
+          break;
+        case "REMOTE":
+
+          break;
+        }
+
+        playSFX(SOUND_ID.ITEM_GET, 1);
+        controller.RemoveObject(o.block, o);
+
+        break;
+      default:
+        break;
+      }
+    }
+    return false;
+  }
+  protected boolean isTouchingDeadlyEnemy() {
+    Rect hitBox = new Rect(rect.x+6, rect.y+6, rect.w-12, rect.h-12);
+    for (BASE_CHARACTER ch : controller.getCollidingCharactersFromRect(blockPosition, hitBox)) {
+      if (ch.entityType == ENTITY_TYPE.ENEMY) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+
+  protected DIRECTION IA_getNewRandomAvailableDirection() {
+
+    DIRECTION newDir = DIRECTION.valueOf((int) random(4)); // nouvelle direction aléatoire
+    for (int incr = 0; incr < 4; incr++) {
+      if (!controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition + getDirectionMapDecalage(newDir), entityType)) { // si cette nouvelle direction a la voie libre
+        return newDir; //on y go
+      } else {
+        newDir = IA_nextDirection(newDir);
+      }
+    }
+    return DIRECTION.NEUTRAL;
+  }
+
+  protected DIRECTION IA_nextDirection(DIRECTION d) {
+    switch (d) {
+    case UP :
+      return DIRECTION.LEFT;
+    case LEFT : 
+      return DIRECTION.RIGHT;
+    case RIGHT :
+      return DIRECTION.DOWN;
+    case DOWN :
+      return DIRECTION.UP;
+    default:
+      return DIRECTION.NEUTRAL;
+    }
+  }
+
+  protected boolean IA_tryDirectionStep() {
+    boolean bool;
+    switch (IA_direction) {
+    case UP :
+      bool = tryUpStep();
+      break;
+    case LEFT : 
+      bool =  tryLeftStep();
+      break;
+    case RIGHT :
+      bool = tryRightStep();
+      break;
+    case DOWN :
+      bool = tryDownStep();
+      break;
+    default:
+      bool = false;
+    }
+    return bool;
   }
 
   protected SpriteAnimation DefineSpriteAnimationFromAction(CHARACTER_ACTION a) {

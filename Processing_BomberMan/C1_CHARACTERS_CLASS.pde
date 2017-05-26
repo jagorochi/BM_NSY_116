@@ -2,12 +2,134 @@
 // --------------------------------------------------------------------------------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------------------------------------------------------------
 
+public class CHICKEN extends BASE_CHARACTER {
+
+  public CHICKEN(int blockPosition) {
+    super(blockPosition);
+    walkSpeed = 0.5;
+    entityType = ENTITY_TYPE.ENEMY;
+  }
+
+  public void stepFrame() {
+    super.stepFrame();
+
+    if (bControl) {
+      Chicken_IA();
+      if (isTouchingDeadlyItems()) {
+        updateSpriteAnimationFrame(CHARACTER_ACTION.DIE);
+        playSFX(SOUND_ID.ENEMY_DYING, 1);
+        bControl = false;
+        SetDectructCountDown(170);
+      }
+    } else {
+      WaitStance();
+    }
+  }
+
+  private void Chicken_IA() {
+    if (IA_IdleCount >0) { // attente
+      IA_IdleCount--;
+      WaitStance();
+      return;
+    }
+    if (IA_direction == DIRECTION.NEUTRAL) { // si on est en position neutral
+      IA_direction = IA_getNewRandomAvailableDirection(); // essayons d'obtenir une voie libre
+      if (IA_direction == DIRECTION.NEUTRAL) { // si aucune nouvelle direction disponible
+        IA_IdleCount = 60; // on attend...
+      }
+    }
+    if (!IA_tryDirectionStep()) {
+      IA_direction =DIRECTION.NEUTRAL;
+      IA_IdleCount = 60;
+    }
+  }
+  
+
+  protected SpriteAnimation DefineSpriteAnimationFromAction(CHARACTER_ACTION a) {
+    SpriteAnimation  sa = new SpriteAnimation();
+    switch (a) {
+    case LOOK_FRONT_WAIT:
+    case LOOK_DOWN_WALK:
+      sa.addSprite(new Sprite(167, 10));
+      sa.addSprite(new Sprite(168, 10));
+      sa.addSprite(new Sprite(167, 10));
+      sa.addSprite(new Sprite(169, 10));
+      break;
+    case LOOK_LEFT_WAIT:
+    case LOOK_LEFT_WALK:
+      sa.addSprite(new Sprite(170, 10));
+      sa.addSprite(new Sprite(171, 10));
+      sa.addSprite(new Sprite(170, 10));
+      sa.addSprite(new Sprite(172, 10));
+      break;
+    case LOOK_RIGHT_WAIT:
+    case LOOK_RIGHT_WALK:
+      sa.addSprite(new Sprite(178, 10));
+      sa.addSprite(new Sprite(176, 10));
+      sa.addSprite(new Sprite(178, 10));
+      sa.addSprite(new Sprite(177, 10));
+      break;
+    case LOOK_UP_WAIT:
+    case LOOK_UP_WALK:
+      sa.addSprite(new Sprite(173, 10));
+      sa.addSprite(new Sprite(174, 10));
+      sa.addSprite(new Sprite(173, 10));
+      sa.addSprite(new Sprite(175, 10));
+      break;
+
+
+
+
+    case DIE:
+      sa.addSprite(new Sprite(179, 120));
+      sa.addSprite(new Sprite(229, 5));
+      sa.addSprite(new Sprite(230, 5));
+      sa.addSprite(new Sprite(231, 5));
+      sa.addSprite(new Sprite(232, 5));
+      sa.addSprite(new Sprite(233, 5));
+      sa.addSprite(new Sprite(234, 5));
+      sa.addSprite(new Sprite(235, 5));
+      sa.addSprite(new Sprite(236, 5));
+      sa.addSprite(new Sprite(237, 5));
+      sa.addSprite(new Sprite(238, 5));
+      sa.setFrameLoop(10); // loop depuis le sprite 40
+      break;
+
+    case VICTORY:
+    case GROUND_APPEAR:
+    case GROUND_DISAPPEAR:
+    case TINY_DISAPPEAR:
+    case LOOK_FRONT_CARRY_WAIT:
+    case LOOK_LEFT_CARRY_WAIT:
+    case LOOK_RIGHT_CARRY_WAIT:
+    case LOOK_UP_CARRY_WAIT:
+    case LOOK_FRONT_CARRY_WALK:
+    case LOOK_LEFT_CARRY_WALK:
+    case LOOK_RIGHT_CARRY_WALK:
+    case LOOK_UP_CARRY_WALK:
+    case LOOK_FRONT_THROW:
+    case LOOK_LEFT_THROW:
+    case LOOK_RIGHT_THROW:
+    case LOOK_UP_THROW:
+    default:
+      sa.addSprite(new Sprite(200));
+      break;
+    }
+    if (sa.MaxFrame == 0) {
+      sa.rebuildFramesTiming();
+    }
+    return sa;
+  }
+}
+
+
 
 public class BOMBERMAN extends BASE_CHARACTER {
   public BOMBERMAN(int blockPosition) {
     super(blockPosition);
     flamePower = 4;
     DropBombCapacity = 3;
+    entityType = ENTITY_TYPE.PLAYER;
   }
 
   public void stepFrame() {
@@ -26,62 +148,12 @@ public class BOMBERMAN extends BASE_CHARACTER {
         WaitStance();
       }
       // si deplacement réussi on check si on touche un ITEM
-
-      for (BASE_OBJECT o : controller.getTouchingObjectsWithCharacterRect(blockPosition, rect)) {
-        switch (o.category) {
-        case DEADLY :
-          updateSpriteAnimationFrame(CHARACTER_ACTION.DIE);
-          playSFX(SOUND_ID.BOMBERMAN_DYING,1);
-          bControl = false;
-          break;
-        case EXIT_DOOR:
-          updateSpriteAnimationFrame(CHARACTER_ACTION.VICTORY);
-          bControl = false;
-          break;
-        case ITEM :
-          switch (o.itemType) {
-          case "BOMB_UP":
-            DropBombCapacity++;
-            if (DropBombCapacity>5) {
-              DropBombCapacity = 5;
-            }
-            break;
-          case "SPEED_UP":
-            walkSpeed+=0.2;
-            if (walkSpeed>2.0) {
-              walkSpeed = 2;
-            }
-            break;
-          case "FLAME_UP":
-            flamePower++;
-            if (flamePower>10) {
-              flamePower = 10;
-            }
-            break;
-          case "SPEED_DOWN":
-            if (walkSpeed<0.6) {
-              walkSpeed = 0.6; // faut pas abuser non plus ^^
-            }
-            break;
-          case "LIFE_UP":
-              playSFX(SOUND_ID.ONE_UP,1);
-            break;
-          case "KICK":
-            kickingAbility = true;
-            break;
-          case "REMOTE":
-
-            break;
-          }
-          
-          playSFX(SOUND_ID.ITEM_GET,1);
-          controller.RemoveObject(o.block, o);
-          
-          break;
-        default:
-          break;
-        }
+      if (isTouchingDeadlyItems() || isTouchingDeadlyEnemy()) {
+        updateSpriteAnimationFrame(CHARACTER_ACTION.DIE);
+        playSFX(SOUND_ID.BOMBERMAN_DYING, 1);
+        bControl = false;
       }
+
 
 
       if (gCtrl.aKP) {
@@ -98,29 +170,18 @@ public class BOMBERMAN extends BASE_CHARACTER {
       } else {
         IsKicking = false; // simple test
       }
-      
-      
-      if (gCtrl.cKP){
+
+
+      if (gCtrl.cKP) {
         //playSFX(SOUND_ID.BOMB_EXPLODE2);
-        playSFX(SOUND_ID.BOMBERMAN_DYING,1);
+        playSFX(SOUND_ID.BOMBERMAN_DYING, 1);
       }
-      
     } else if (gCtrl.cKP) {
       bControl = true;
-      
     } else {
       WaitStance();
     }
-    if (bool) {
-      // nothing
-    }
-    /* mise a jour de l'affichage du personnage
-     - en fonction de l'action en cours
-     - en fonction du sprite de l'animation en cours
-     - en fonction du décalage x et Y
-     */
   }
-
 
   protected SpriteAnimation DefineSpriteAnimationFromAction(CHARACTER_ACTION a) {
     SpriteAnimation  sa = new SpriteAnimation();

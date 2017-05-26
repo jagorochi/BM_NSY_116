@@ -17,7 +17,7 @@ class GLC {
    */
 
 
-  Map map;
+  MAP map;
   OBJECTS_MANAGER OManager;
   CHARACTERS_MANAGER CManager;
   
@@ -25,8 +25,8 @@ class GLC {
     PImage tileMapImg = loadImage(strTileMapPath);
     int pxTileSize= 16;
     int nbMaxMapTileType = 101; // a supprimer car on utilisera qu'un seul type de map...
-
-    map = new Map(this, tileMapImg, pxTileSize, nbMaxMapTileType, strLevelMapPath); // a instancier en premier afin que les variable de taille de la map puissent être définis..
+    
+    map = new MAP(this, tileMapImg, pxTileSize, nbMaxMapTileType, strLevelMapPath); // a instancier en premier afin que les variable de taille de la map puissent être définis..
     OManager = new OBJECTS_MANAGER(this, tileMapImg, strLevelMapPath);
     CManager = new CHARACTERS_MANAGER(this, tileMapImg, strLevelMapPath);
   }

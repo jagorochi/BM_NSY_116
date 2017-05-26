@@ -8,9 +8,47 @@ enum CHARACTER_ACTION {
   public static int COUNT = CHARACTER_ACTION.values().length;
 }
 
+/*
 enum DIRECTION {
-  UP, LEFT, RIGHT, DOWN, UP_LEFT, UP_RIGHT, DOWN_LEFT, DOWN_RIGHT, NEUTRAL;
+ UP, LEFT, RIGHT, DOWN, UP_LEFT, UP_RIGHT, DOWN_LEFT, DOWN_RIGHT, NEUTRAL;
+ }*/
+
+public enum DIRECTION {
+  UP(0), LEFT(1), RIGHT(2), DOWN(3), NEUTRAL(4);
+  private int Direction;
+
+  private static Map<Integer, DIRECTION> map = new HashMap<Integer, DIRECTION>();
+
+  static {
+    for (DIRECTION legEnum : DIRECTION.values()) {
+      map.put(legEnum.Direction, legEnum);
+    }
+  }
+
+  private DIRECTION(final int leg) { 
+    Direction = leg;
+  }
+
+  public static DIRECTION valueOf(int Direction) {
+    return map.get(Direction);
+  }
 }
+
+public  int getDirectionMapDecalage(DIRECTION d) {
+  switch (d) {
+  case  UP :
+    return -gMapBlockWidth;
+  case  LEFT:
+    return -1;
+  case  RIGHT:
+    return 1;
+  case  DOWN:
+    return gMapBlockWidth;
+  default:
+    return 0;
+  }
+}
+
 
 enum FLAME_TYPE {
   CENTER, HORIZONTAL, VERTICAL, BORDER_LEFT, BORDER_RIGHT, BORDER_UP, BORDER_DOWN;
@@ -22,6 +60,8 @@ enum DOOR_STATUS {
 enum OBJECT_CATEGORY {
   DEADLY, STATIC, ITEM, BOMB, INTERACTIVE, SWITCH, DEFAULT, EXIT_DOOR, MAGNET;
 }
+
+
 
 enum ENTITY_TYPE {
   PLAYER, ENEMY, OBJECT;
@@ -235,13 +275,13 @@ public class Controls {
     if (keyCode == RIGHT) {
       rightPressed = true;
     }
-    if (keyCode == 65 || keyCode == 97 || keyCode == 96) {
+    if (keyCode == 65 ||  keyCode == 96) {
       aHold = true;
     }
-    if (keyCode == 90 || keyCode == 122) {
+    if (keyCode == 90 || keyCode == 97) {
       bHold = true;
     }
-    if (keyCode == 69 || keyCode == 101) {
+    if (keyCode == 69 || keyCode == 99) {
       cHold = true;
     }
   }
@@ -257,7 +297,7 @@ public class Controls {
     }
     if (keyCode == LEFT) {
       leftPressed = false;
-      
+
       leftCounter = 0;// reactivation du compteur ok
     }
     if (keyCode == RIGHT) {
@@ -265,13 +305,13 @@ public class Controls {
       rightCounter = 0;// reactivation du compteur ok
     }
 
-    if (keyCode == 65 || keyCode == 97 || keyCode == 96) {
+    if (keyCode == 65 ||  keyCode == 96) {
       aHold = false;
     }
-    if (keyCode == 90 || keyCode == 122) {
+    if (keyCode == 90 || keyCode == 97) {
       bHold = false;
     }
-    if (keyCode == 69 || keyCode == 101) {
+    if (keyCode == 69 || keyCode == 99) {
       cHold = false;
     }
   }

@@ -15,14 +15,22 @@ void settings() {
   ScreenRect = new Rect(0, 0, xSize, ySize);
   size(xSize* gSketchScale, ySize *gSketchScale); // taille de la fenetre
   noSmooth();
-  gDebug = false;
+  gDebug = true;
+  
 }
 
+void stop() {
+  // soundBank.clear();
+  println("stop");
+}
+
+
 void setup() {
+  prepareExitHandler();
   noFill();
   populateSoundBank();
   gCtrl = new Controls();
-  
+
   Glc = new GLC("bomber_man_tilemap.png", "LEVEL_1.csv");
 }
 
@@ -40,4 +48,19 @@ void draw() {
     text("FPS : "  + round(frameRate), 10, 20);
   }
   popMatrix();
+}
+
+
+private void prepareExitHandler() {
+
+  Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
+
+    public void run () {
+      soundBank.clear();
+      System.out.println("SHUTDOWN HOOK");
+
+      // application exit code here
+    }
+  }
+  ));
 }
