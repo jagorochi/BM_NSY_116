@@ -1,159 +1,34 @@
-// --------------------------------------------------------------------------------------------------------------------------------------------------------
-// --------------------------------------------------------------------------------------------------------------------------------------------------------
-// --------------------------------------------------------------------------------------------------------------------------------------------------------
-
-public class CHICKEN extends BASE_CHARACTER {
-
-  public CHICKEN(int blockPosition) {
-    super(blockPosition);
-    walkSpeed = 0.5;
-    entityType = ENTITY_TYPE.ENEMY;
-  }
-
-  public void stepFrame() {
-    super.stepFrame();
-
-    if (bControl) {
-      Chicken_IA();
-      if (isTouchingDeadlyItems()) {
-        updateSpriteAnimationFrame(CHARACTER_ACTION.DIE);
-        playSFX(SOUND_ID.ENEMY_DYING, 1);
-        bControl = false;
-        SetDectructCountDown(170);
-      }
-    } else {
-      WaitStance();
-    }
-  }
-
-  private void Chicken_IA() {
-    if (IA_IdleCount >0) { // attente
-      IA_IdleCount--;
-      WaitStance();
-      return;
-    }
-    if (IA_direction == DIRECTION.NEUTRAL) { // si on est en position neutral
-      IA_direction = IA_getNewRandomAvailableDirection(); // essayons d'obtenir une voie libre
-      if (IA_direction == DIRECTION.NEUTRAL) { // si aucune nouvelle direction disponible
-        IA_IdleCount = 60; // on attend...
-      }
-    }
-    if (!IA_tryDirectionStep()) {
-      IA_direction =DIRECTION.NEUTRAL;
-      IA_IdleCount = 60;
-    }
-  }
-  
-
-  protected SpriteAnimation DefineSpriteAnimationFromAction(CHARACTER_ACTION a) {
-    SpriteAnimation  sa = new SpriteAnimation();
-    switch (a) {
-    case LOOK_FRONT_WAIT:
-    case LOOK_DOWN_WALK:
-      sa.addSprite(new Sprite(167, 10));
-      sa.addSprite(new Sprite(168, 10));
-      sa.addSprite(new Sprite(167, 10));
-      sa.addSprite(new Sprite(169, 10));
-      break;
-    case LOOK_LEFT_WAIT:
-    case LOOK_LEFT_WALK:
-      sa.addSprite(new Sprite(170, 10));
-      sa.addSprite(new Sprite(171, 10));
-      sa.addSprite(new Sprite(170, 10));
-      sa.addSprite(new Sprite(172, 10));
-      break;
-    case LOOK_RIGHT_WAIT:
-    case LOOK_RIGHT_WALK:
-      sa.addSprite(new Sprite(178, 10));
-      sa.addSprite(new Sprite(176, 10));
-      sa.addSprite(new Sprite(178, 10));
-      sa.addSprite(new Sprite(177, 10));
-      break;
-    case LOOK_UP_WAIT:
-    case LOOK_UP_WALK:
-      sa.addSprite(new Sprite(173, 10));
-      sa.addSprite(new Sprite(174, 10));
-      sa.addSprite(new Sprite(173, 10));
-      sa.addSprite(new Sprite(175, 10));
-      break;
-
-
-
-
-    case DIE:
-      sa.addSprite(new Sprite(179, 120));
-      sa.addSprite(new Sprite(229, 5));
-      sa.addSprite(new Sprite(230, 5));
-      sa.addSprite(new Sprite(231, 5));
-      sa.addSprite(new Sprite(232, 5));
-      sa.addSprite(new Sprite(233, 5));
-      sa.addSprite(new Sprite(234, 5));
-      sa.addSprite(new Sprite(235, 5));
-      sa.addSprite(new Sprite(236, 5));
-      sa.addSprite(new Sprite(237, 5));
-      sa.addSprite(new Sprite(238, 5));
-      sa.setFrameLoop(10); // loop depuis le sprite 40
-      break;
-
-    case VICTORY:
-    case GROUND_APPEAR:
-    case GROUND_DISAPPEAR:
-    case TINY_DISAPPEAR:
-    case LOOK_FRONT_CARRY_WAIT:
-    case LOOK_LEFT_CARRY_WAIT:
-    case LOOK_RIGHT_CARRY_WAIT:
-    case LOOK_UP_CARRY_WAIT:
-    case LOOK_FRONT_CARRY_WALK:
-    case LOOK_LEFT_CARRY_WALK:
-    case LOOK_RIGHT_CARRY_WALK:
-    case LOOK_UP_CARRY_WALK:
-    case LOOK_FRONT_THROW:
-    case LOOK_LEFT_THROW:
-    case LOOK_RIGHT_THROW:
-    case LOOK_UP_THROW:
-    default:
-      sa.addSprite(new Sprite(200));
-      break;
-    }
-    if (sa.MaxFrame == 0) {
-      sa.rebuildFramesTiming();
-    }
-    return sa;
-  }
-}
-
-
-
 public class BOMBERMAN extends BASE_CHARACTER {
-  public BOMBERMAN(int blockPosition) {
-    super(blockPosition);
-    flamePower = 4;
-    DropBombCapacity = 3;
+  public BOMBERMAN(int blockPosition, String ID) {
+    super(blockPosition, ID);
+    flamePower = 1;
+    DropBombCapacity = 1;
     entityType = ENTITY_TYPE.PLAYER;
   }
 
   public void stepFrame() {
-    boolean bool = false;
-
+    //boolean bool = false;
+    
     if (bControl) { // si le joueur a l'accès...
       if (gCtrl.leftHold) {
-        bool =  tryLeftStep();
+        tryLeftStep();
       } else if (gCtrl.rightHold) {
-        bool = tryRightStep();
+        tryRightStep();
       } else if (gCtrl.upHold) {
-        bool = tryUpStep();
+        tryUpStep();
       } else if (gCtrl.downHold) {
-        bool = tryDownStep();
+        tryDownStep();
       } else {
         WaitStance();
       }
       // si deplacement réussi on check si on touche un ITEM
-      if (isTouchingDeadlyItems() || isTouchingDeadlyEnemy()) {
+      if ((isTouchingDeadlyObjects() || isTouchingDeadlyEnemy()) && invulnerabilityDuration==0) {
         updateSpriteAnimationFrame(CHARACTER_ACTION.DIE);
-        playSFX(SOUND_ID.BOMBERMAN_DYING, 1);
+        gSound.playSFX(SOUND_ID.BOMBERMAN_DYING, 1);
         bControl = false;
+        controller.levelEndingEvent(LEVEL_END_EVENT.PLAYER_DIE);
       }
-
+      
 
 
       if (gCtrl.aKP) {
@@ -163,20 +38,18 @@ public class BOMBERMAN extends BASE_CHARACTER {
         // updateSpriteAnimationFrame(CHARACTER_ACTION.VICTORY);
         // test de kick sur bomb
         IsKicking = true;
-
+        
         /*  if (ActiveDroppedBombs.size()>0) {
          ActiveDroppedBombs.get(0).kick(DIRECTION.RIGHT, 1.5);
          }*/
       } else {
         IsKicking = false; // simple test
       }
-
-
       if (gCtrl.cKP) {
         //playSFX(SOUND_ID.BOMB_EXPLODE2);
-        playSFX(SOUND_ID.BOMBERMAN_DYING, 1);
+        // gSound.playSFX(SOUND_ID.HOLD, 1);
       }
-    } else if (gCtrl.cKP) {
+    } else if (gCtrl.cKP && gDebug) {
       bControl = true;
     } else {
       WaitStance();

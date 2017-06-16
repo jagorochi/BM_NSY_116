@@ -55,6 +55,12 @@ public class BOMB extends BASE_OBJECT {
     }
   }
 
+  public void removeDropperReference() {
+    if (dropper != null) {
+      dropper.DeleteBombRef(this); // on prévient le character qui a droppé cette bombe Qu'elle vient d'exploser : il peut en dropper une a nouveau
+      dropper = null;
+    }
+  }
 
   public void flameHit() {
     // afin d'éviter les bombes qui s'explosent mutuellement à l'infini via récursivité..
@@ -63,20 +69,19 @@ public class BOMB extends BASE_OBJECT {
       return;
     }
     bExploded = true; // 
-    playSFX(SOUND_ID.BOMB_EXPLODE1,0.5);
-    if (dropper != null) {
-      dropper.DeleteBombRef(this); // on prévient le character qui a droppé cette bombe Qu'elle vient d'exploser : il peut en dropper une a nouveau
-      dropper = null;
-    }
-
+    gSound.playSFX(SOUND_ID.BOMB_EXPLODE1, 0.5);
+    removeDropperReference();
+    
     // verification si l'explosion se trouve sur un "Bomb explosion Maximizer"
     // ---------------------------------------------------------------------------------------- 
-    ArrayList<BASE_OBJECT> objects = controller.getMapBlockPositionObjectList(block);
     int[] powerDir = new int[]{power, power, power, power};
-    for (BASE_OBJECT object : objects) {
-      if (object instanceof EXPLOSION_MAXIMIZER) {
-        powerDir = ((EXPLOSION_MAXIMIZER) object).getPowerDirection();
-        break;
+    if (controller != null){ // anti bug si la bombe est est "mangé" par pacman à la frame ou elle explose...
+      ArrayList<BASE_OBJECT> objects = controller.getMapBlockPositionObjectList(block);
+      for (BASE_OBJECT object : objects) {
+        if (object instanceof EXPLOSION_MAXIMIZER) {
+          powerDir = ((EXPLOSION_MAXIMIZER) object).getPowerDirection();
+          break;
+        }
       }
     }
     // maintenant on créer des objets "flammes autour" :)
@@ -140,7 +145,7 @@ public class DYNAMITE extends BASE_OBJECT {
   int duration;
   public DYNAMITE(int block) {
     super(block);
-    this.category = OBJECT_CATEGORY.BOMB;
+    this.category = OBJECT_CATEGORY.DYNAMITE;
     bombDrop = false; // est ce qu'on peut déposer une bombe sur cet objet
     stopFlame = true; // est ce que cet objet arrete les flammes
     stopEnemy = true; // est ce que cet objet arrete les enemies
@@ -165,7 +170,7 @@ public class DYNAMITE extends BASE_OBJECT {
        destruct();
        }*/
       if (duration == 6) {
-        playSFX(SOUND_ID.BOMB_EXPLODE6,0.5);
+        gSound.playSFX(SOUND_ID.BOMB_EXPLODE6, 0.5);
         DeployWaveExplosion(block - 2);
       } else if (duration == 4) {
         DeployWaveExplosion(block - (2*gMapBlockWidth));
@@ -195,7 +200,7 @@ public class DYNAMITE extends BASE_OBJECT {
     bExploded = true; // 
     // maintenant on créer des objets "flammes autour" :)
     // ----------------------------------------------------------------------------------------
-    playSFX(SOUND_ID.BOMB_EXPLODE2,0.5);
+    gSound.playSFX(SOUND_ID.BOMB_EXPLODE2, 0.5);
     DeployWaveExplosion(block);
   }
   private void DeployWaveExplosion(int blockDecal) {
@@ -326,6 +331,7 @@ public class EXPLOSION_MAXIMIZER extends BASE_OBJECT {
   }
 }
 
+
 public class CHEST extends BASE_OBJECT {
   String strItem;
   boolean flameHit;
@@ -387,6 +393,48 @@ public class EXPLODING_CHEST extends BASE_OBJECT {
     }
     if (duration == 0) {
       destruct();
+    }
+  }
+}
+
+public class SPIKE extends BASE_OBJECT {
+  private boolean shadow;
+  private boolean spiked;
+  public SPIKE(int block, boolean shadow) {
+    super(block);
+    this.category = OBJECT_CATEGORY.SPIKE; // pour simplifier la detection des characters qui "touchent" cet objet 
+    this.shadow = shadow; // ombre 
+    bombDrop = true; // est ce qu'on peut déposer une bombe sur cet objet
+    stopFlame = false; // est ce que cet objet arrete les flammes
+    stopEnemy = false; // est ce que cet objet arrete les enemies
+    stopPlayer = false; // est ce que cet objet arrete le joueur...
+    movable = false; // est ce que l'objet est déplacable..
+    stopObject = false; // est ce que cet objet arrete les objets pouvant être kické ou poussés...
+    spiked = false;
+    if (shadow) {
+      Sprites = new int[]{74};
+    } else {
+      Sprites = new int[]{72};
+    }
+    FrameTimings = new int[]{10};
+  }
+
+  public void stepFrame() {
+    super.stepFrame();
+    if (spiked) return;
+
+    for ( BASE_CHARACTER c : controller.getMapBlockPositionCharacterList(block)) {
+      if (c.entityType == ENTITY_TYPE.PLAYER) {
+        this.category = OBJECT_CATEGORY.DEADLY;
+        gSound.playSFX(SOUND_ID.SWORD, 1);
+        if (shadow) {
+          Sprites = new int[]{75};
+        } else {
+          Sprites = new int[]{73};
+        }
+        spiked = true;
+        break;
+      }
     }
   }
 }
@@ -461,7 +509,7 @@ public class CAPSULE_SWITCH extends BASE_OBJECT {
   public void flameHit() {
     if (!switched) {
       switched = true;
-      playSFX(SOUND_ID.COMMAND_SET,1);
+      gSound.playSFX(SOUND_ID.COMMAND_SET, 1);
       Sprites[0] = 1; // on change l'image en "SWITCH ON"
       controller.confirmSwitchEnabledForExit();
     }
@@ -473,9 +521,11 @@ public class MAGNET extends BASE_OBJECT {
   private int magnetDecal;
   private int maxDistanceAction;
   private int pauseMagnet;
-  public MAGNET(int block, DIRECTION dir) {
+  private boolean fixed;
+  public MAGNET(int block, DIRECTION dir, boolean fixed) {
     super(block);
     this.category = OBJECT_CATEGORY.MAGNET;
+    this.fixed = fixed;
     bombDrop = false; // est ce qu'on peut déposer une bombe sur cet objet
     stopFlame = true; // est ce que cet objet arrete les flammes
     stopEnemy = true; // est ce que cet objet arrete les enemies
@@ -506,7 +556,7 @@ public class MAGNET extends BASE_OBJECT {
         for (BASE_OBJECT o : controller.getMapBlockPositionObjectList(pos)) {
           if (o.category == OBJECT_CATEGORY.BOMB) {
 
-           if (o.tryKicking(MagnetizeDirection, 2)) playSFX(SOUND_ID.MAGNET3,1);
+            if (o.tryKicking(MagnetizeDirection, 2.1)) gSound.playSFX(SOUND_ID.MAGNET3, 1);
           }
         }
         // }
@@ -519,7 +569,7 @@ public class MAGNET extends BASE_OBJECT {
 
 
   private void updateMagnetDirection() {
-    maxDistanceAction = 5; // a chaque nouvelle orientation on mets a jour la distance d'action..
+    maxDistanceAction = 4; // a chaque nouvelle orientation on mets a jour la distance d'action..
     switch(MagnetizeDirection) {
     case LEFT:
       Sprites = new int[]{6};
@@ -547,24 +597,27 @@ public class MAGNET extends BASE_OBJECT {
     if (pauseMagnet > 0) {
       return;
     }
-    playSFX(SOUND_ID.SWORD,1);
+    gSound.playSFX(SOUND_ID.SWORD, 1);
+
     pauseMagnet = 10;
-    switch(MagnetizeDirection) {
-    case LEFT:
-      MagnetizeDirection = DIRECTION.UP;
-      break;
-    case UP:
-      MagnetizeDirection = DIRECTION.RIGHT;
-      break;
-    case RIGHT:
-      MagnetizeDirection = DIRECTION.DOWN;
-      break;
-    case DOWN :
-      MagnetizeDirection = DIRECTION.LEFT;
-      break;
-    default :
+    if (!fixed) {
+      switch(MagnetizeDirection) {
+      case LEFT:
+        MagnetizeDirection = DIRECTION.UP;
+        break;
+      case UP:
+        MagnetizeDirection = DIRECTION.RIGHT;
+        break;
+      case RIGHT:
+        MagnetizeDirection = DIRECTION.DOWN;
+        break;
+      case DOWN :
+        MagnetizeDirection = DIRECTION.LEFT;
+        break;
+      default :
+      }
+      updateMagnetDirection();
     }
-    updateMagnetDirection();
   }
 }
 
@@ -613,12 +666,13 @@ public class EXIT_DOOR extends BASE_OBJECT {
     println("EXIT_DOOR flameHit !");
     if (status == DOOR_STATUS.LOCKED) {
       updateStatus(DOOR_STATUS.HIT);
+      controller.RespawnAllDeadCharacters();
     }
   }
 
   public void open() {
     //println("EXIT_DOOR OPEN !");
-    playSFX(SOUND_ID.SECRET,1);
+    gSound.playSFX(SOUND_ID.SECRET, 1);
     updateStatus(DOOR_STATUS.OPEN);
   }
 

@@ -1,4 +1,4 @@
-public int gMapBlockWidth, gMapBlockHeight, gpxMapTileSize; //<>//
+public int gMapBlockWidth, gMapBlockHeight, gpxMapTileSize; //<>// //<>// //<>//
 
 class MAP {
   int[] tableau= new int[]{1, 2, 2, 2, 2};
@@ -12,7 +12,7 @@ class MAP {
   private int playerScrollDecalX, playerScrollDecalY;
 
   private GLC oParent;
-  public MAP(GLC oParent, PImage tileMapImg, int pxMapTileSize, int MaxTile, String strMapPath) {
+  public MAP(GLC oParent, PImage tileMapImg, int pxMapTileSize, int MaxTile) {
     this.oParent= oParent;
     gpxMapTileSize = pxMapTileSize;
     
@@ -34,15 +34,20 @@ class MAP {
       i.copy(tileMapImg, xSource, ySource, gpxMapTileSize, gpxMapTileSize, 0, 0, gpxMapTileSize, gpxMapTileSize); // on copie le contenu
       lHardBlockTilesImages.add(i); // on stocke chaque miniature...
     }
+  }
 
-    /*
+   public void clearSession(){
+     map.clear();
+   }
+   
+   public void initSession(String strMapPath){
+     /*
       construction matricielle de la map en fonction du fichier de niveau .csv fournit en argument.
      */
-
     strLevelMapInit = loadStrings(strMapPath); // chaque valeur dans la liste est une ligne de texte..
     gMapBlockHeight = strLevelMapInit.length;
     gMapBlockWidth = split(strLevelMapInit[0], ';').length;
-
+    
     for (int incr1 = 0; incr1 < gMapBlockHeight; incr1++) {
       String[] strMapLineContent = split(strLevelMapInit[incr1], ";");
       for ( int incr2 = 0; incr2 < gMapBlockWidth; incr2++) {
@@ -56,9 +61,8 @@ class MAP {
     maxScreenY = (gMapBlockHeight * gpxMapTileSize) - ScreenRect.h;
     playerScrollDecalX = - ((ScreenRect.w / 2 )  + (gpxMapTileSize/2));
     playerScrollDecalY = - ((ScreenRect.h / 2 )  + (gpxMapTileSize/2));
-  }
-
-
+     
+   }
 
 
   /* fonction permettant de verifier si un block laisse passer ou pas le joueur. */
@@ -205,7 +209,7 @@ class MAP {
 
     for (int loop = 0; loop<maxLoop; loop++) {
       for (int nBlock = nStart; nBlock <= nEnd; nBlock++) {
-        int b = nBlock + (loop* gMapBlockWidth);
+        int b = nBlock + (loop * gMapBlockWidth);
         if (b >= MapSize) {
           break;
         }
@@ -213,6 +217,8 @@ class MAP {
         image(lHardBlockTilesImages.get(hb.getTileToDraw()-1), hb.rect.x, hb.rect.y);
       }
     }
+    
+    
   }
 
 

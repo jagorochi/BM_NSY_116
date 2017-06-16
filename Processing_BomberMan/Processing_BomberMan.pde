@@ -3,51 +3,62 @@ import java.util.*;
 
 Controls gCtrl;
 GLC Glc; // variable générale
-
+SOUND_MANAGER gSound;
 int gSketchScale = 3;
 boolean gDebug;
 Rect ScreenRect;
-
+PImage buffer;
+PFont fontMM,DefaultFont,HeartFont;
 
 void settings() {
   int xSize = 272 ; // 17 blocks de 16px
   int ySize = 208 ; // 13 blocks de 16px
   ScreenRect = new Rect(0, 0, xSize, ySize);
+  buffer = createImage(xSize, ySize, RGB);
+  
   size(xSize* gSketchScale, ySize *gSketchScale); // taille de la fenetre
   noSmooth();
-  gDebug = true;
-  
+  gDebug = false;
 }
 
-void stop() {
-  // soundBank.clear();
-  println("stop");
-}
+
 
 
 void setup() {
   prepareExitHandler();
   noFill();
-  populateSoundBank();
+  fontMM = createFont("Boxy-Bold.ttf", 36);
+  HeartFont = createFont("MWHeart.ttf", 70);
+  DefaultFont = createFont("Georgia", 32);
+  
+  
+  //textFont(fontMM);
+  gSound = new SOUND_MANAGER();
   gCtrl = new Controls();
-
-  Glc = new GLC("bomber_man_tilemap.png", "LEVEL_1.csv");
+  String[] lvls = new String[]{ "LEVEL_1.csv",  "LEVEL_2.csv", "LEVEL_3.csv"};
+  Glc = new GLC("bomber_man_tilemap.png", lvls);
+  
 }
 
 
 
 
 void draw() {
-  pushMatrix();
-  scale(gSketchScale);
-  rect(10, 10, 50, 50);
   gCtrl.stepFrame();
-  Glc.GameLogicFrameUpdate();  
-
+  gSound.stepFrame();
+  Glc.stepFrame();
+  //Glc.GameLogicFrameUpdate(); 
+  
+  // popMatrix();
   if (gDebug) {
-    text("FPS : "  + round(frameRate), 10, 20);
-  }
-  popMatrix();
+    fill(255);
+    textFont(DefaultFont);
+    scale(1);
+    text("FPS : "  + round(frameRate), 80, 30);
+    //textFont(fontMM);
+    noFill();
+    //text("NIVEAU 1", (ScreenRect.w * gSketchScale)/2,340);
+  }  
 }
 
 

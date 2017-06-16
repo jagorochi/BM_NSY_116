@@ -6,13 +6,15 @@ public class CHARACTERS_MANAGER {
   private int SpriteHeight = 32;
   private String strLevelMapInit[]; // on enregistre le contenu du level initial au cas ou si l'on doit réinitialiser la map.
   private BOMBERMAN BM;
-
+  private ArrayList<Integer> charactersReadyForRespawnPositions = new ArrayList<Integer>(); //
+  private ArrayList<String> charactersReadyForRespawnID = new ArrayList<String>();
   private ArrayList<ArrayList<BASE_CHARACTER>> CharacterMapMatrix = new ArrayList<ArrayList<BASE_CHARACTER>>();
   private ArrayList<PENDING_BASE_CHARACTER> PendingCharactersForRemoval= new ArrayList<PENDING_BASE_CHARACTER>();
   private ArrayList<PENDING_BASE_CHARACTER> PendingCharactersForInclusion= new ArrayList<PENDING_BASE_CHARACTER>();
+  private int ActiveEnemiesCount;
   private GLC oParent;
 
-  public CHARACTERS_MANAGER(GLC oParent, PImage tileMapImg, String strMapPath) {
+  public CHARACTERS_MANAGER(GLC oParent, PImage tileMapImg) {
     this.oParent = oParent;
     // recuperation des sprites de taille 16*32 ------------------------------------------------------------------------------------------------------------
     int totalSprite = 200; // nombre total de sprite "character" (bomberman + monstres)
@@ -30,7 +32,6 @@ public class CHARACTERS_MANAGER {
       i.copy(tileMapImg, xSource, ySource, spriteWidth, SpriteHeight, 0, 0, spriteWidth, SpriteHeight); // on copie le contenu
       lCharactersImages.add(i); // on stocke chaque miniature...
     }
-
     // recuperation des sprites de taille 24*32 ------------------------------------------------------------------------------------------------------------
     totalSprite = 39; // nombre total de sprite large
     spriteWidth = gpxMapTileSize / 2 * 3; // 1/3 plus large..
@@ -46,17 +47,25 @@ public class CHARACTERS_MANAGER {
       lCharactersImages.add(i); // on stocke chaque miniature...
     }
     // declaration de la liste contenant les objets
+  }
 
+  public void ClearSession() {
+    CharacterMapMatrix.clear();
+    charactersReadyForRespawnPositions.clear();
+    charactersReadyForRespawnID.clear();
+  }
+
+
+  public void initSession(String strMapPath, boolean bResetPlayer) {
     // spawn des characters du niveau------------------------------------------------------------------------------------------------------------
     strLevelMapInit = loadStrings(strMapPath); // chaque valeur dans la liste est une ligne de texte..
     //int gMapBlockHeight = strLevelMapInit.length;
     ///int gMapBlockWidth = split(strLevelMapInit[0], ';').length;
-
+    ActiveEnemiesCount = 0;
     int maxMapBlock = gMapBlockHeight * gMapBlockWidth;
     for (int incr = 0; incr < maxMapBlock; incr++) {
       CharacterMapMatrix.add(new ArrayList<BASE_CHARACTER>());
     }
-
     for (int incr1 = 0; incr1 < gMapBlockHeight; incr1++) {
       String[] strMapLineContent = split(strLevelMapInit[incr1], ";");
       for ( int incr2 = 0; incr2 < gMapBlockWidth; incr2++) {
@@ -66,22 +75,29 @@ public class CHARACTERS_MANAGER {
             int block = (incr1*gMapBlockWidth)+incr2;
             switch(item) {
             case "111": // bomberman
-
-              BM = new BOMBERMAN( block); // on doit garder une reference pour le rendu de la map
-              AppendCharacterForInclusion(block, BM);
-              // addObject(BM);
-              println("creation de l'objet bomberman :) sur le block n° " + (incr1*gMapBlockHeight)+incr2);
+              if (bResetPlayer || BM == null) {
+                BM = new BOMBERMAN( block, item); // personnage initialisé avec propriétés de bases.
+              } else { // on conserve les propriétés bonus accumulés
+                BM.blockPosition = block; // on repositionne le joueur sur le bloc prévu pour cette map
+                BM.rect = getCoordinateFromBlockPosition(block); // on recalcul son "rect"
+                BM.previousAction = CHARACTER_ACTION.LOOK_DOWN_WALK; // il regarde vers le bas
+                BM.bControl = true; // on redonne le controle au joueur.
+              }
+              AppendCharacterForInclusion(block, BM); // on l'ajoute dans la liste des positions..
               break;
-            case "112": // enemie 1
+            case "112": // BUDDY // Sprite disponible mais personnage non implémenté
               break;
-            case "113": // enemie 2
+            case "113": // BOMBAS // Sprite disponible mais personnage non implémenté
               break;
-            case "114": // enemie 3
+            case "114": // BEAR // Sprite disponible mais personnage non implémenté
               break;
-            case "115": // enemie 3
+            case "115": // PACMAN
+              ActiveEnemiesCount++;
+              AppendCharacterForInclusion(block, new PACMAN(block, item));
               break;
             case "116": // CHICKEN
-              AppendCharacterForInclusion(block, new CHICKEN(block));
+              ActiveEnemiesCount++;
+              AppendCharacterForInclusion(block, new CHICKEN(block, item));
               break;
             }
           }
@@ -89,6 +105,43 @@ public class CHARACTERS_MANAGER {
       }
     }
   }
+
+  public void AddDeadCharacterReadyForRespawn(int block, String ID) {
+    charactersReadyForRespawnPositions.add(block);
+    charactersReadyForRespawnID.add(ID);
+    ActiveEnemiesCount--;
+    if (ActiveEnemiesCount == 0) Glc.confirmAllDeadMeat(true); // si tous les enemies sont morts alors on prévient le controlleur de la partie.
+  }
+
+  public void RespawnAllDeadCharacters() {
+    for (int incr= 0; incr < charactersReadyForRespawnPositions.size(); incr++) {
+      int block = charactersReadyForRespawnPositions.get(incr);
+      String ID = charactersReadyForRespawnID.get(incr);
+      ActiveEnemiesCount++;
+      switch (ID) {
+      case "112": // BUDDY // Sprite disponible mais personnage non implémenté
+        break;
+      case "113": // BOMBAS // Sprite disponible mais personnage non implémenté
+        break;
+      case "114": // BEAR // Sprite disponible mais personnage non implémenté
+        break;
+      case "115": // PACMAN // identique au CHICKEN mange les bombes lorsqu'il passe dessus :-/
+        PACMAN p = new PACMAN(block, ID);
+        AppendCharacterForInclusion(block, p);
+        p.SetInvulnerability(120);
+        break;
+      case "116": // CHICKEN // enemie de base : se déplace bettement.
+        CHICKEN c = new CHICKEN(block, ID);
+        AppendCharacterForInclusion(block, c);
+        c.SetInvulnerability(120);
+        break;
+      }
+    }
+    Glc.confirmAllDeadMeat(false);
+    charactersReadyForRespawnPositions.clear();
+    charactersReadyForRespawnID.clear();
+  }
+
 
   public void PermuteCharacterMapMatrixPosition(int FromBlock, int ToBlock, BASE_CHARACTER c) {
     AppendCharacterForRemoval(FromBlock, c);
@@ -115,7 +168,6 @@ public class CHARACTERS_MANAGER {
     PendingCharactersForInclusion.clear();
   }
 
-
   void AppendCharacterForRemoval(int block, BASE_CHARACTER o) {
     /* les objets ne peuvent être supprimé de la liste ObjectMapMatrix lorsque la boucle 
      stepFrame() s'execute sous peine de générer une exception..
@@ -133,7 +185,6 @@ public class CHARACTERS_MANAGER {
     PendingCharactersForRemoval.clear();
   }
 
-
   public void UpdateCharactersStepFrame() {
     for (ArrayList<BASE_CHARACTER> mapMatrix : CharacterMapMatrix) {
       for (BASE_CHARACTER o : mapMatrix) {
@@ -148,7 +199,29 @@ public class CHARACTERS_MANAGER {
     for (ArrayList<BASE_CHARACTER> mapMatrix : CharacterMapMatrix) {
       for (BASE_CHARACTER o : mapMatrix) {
         Sprite s = o.GetSpriteToRender();
-        image(lCharactersImages.get(s.TileID), s.xDecal, s.yDecal);
+        if (!o.isSpriteTinted) {
+          image(lCharactersImages.get(s.TileID), s.xDecal, s.yDecal);
+        } else {
+          PImage processedImg = lCharactersImages.get(s.TileID).get(); // on obtient une copie du sprite a traiter...
+          switch(o.spriteTint) {
+          case WHITE:
+            processedImg.blend( 0, 0, processedImg.width, processedImg.height, 0, 0, processedImg.width, processedImg.height, ADD);
+            processedImg.blend( 0, 0, processedImg.width, processedImg.height, 0, 0, processedImg.width, processedImg.height, ADD);
+            break;
+          case RED:
+            tint(255, 0, 0);
+            break;
+          case GREEN : 
+            tint(0, 255, 0);
+            break;
+          case BLUE:
+            tint(0, 0, 255);
+            break;
+          }
+          image(processedImg, s.xDecal, s.yDecal);
+          noTint();
+        }
+
         if (gDebug) {
           stroke(100, 100, 100);
           rect(o.rect.x, o.rect.y, o.rect.h, o.rect.h);
@@ -195,9 +268,9 @@ public class CHARACTERS_MANAGER {
     return (Glc.OManager.IsObjectStoppingEntityAtPosition(nBlock, entity) || Glc.map.IsHardBlockStoppingEntityAtPosition(nBlock, entity));
   }
 
-  public boolean isStoppingBlockOrObjectCollidingWithEntityRect(int CharacterBlock, int nBlock, Rect EntityRect, ENTITY_TYPE entity) {
+  public boolean isStoppingBlockOrObjectCollidingWithEntityRect(int CharacterBlock, int nBlock, Rect EntityRect, ENTITY_TYPE entity, boolean excludeBomb) {
     // cette fonction est différente de "IsBlockOrObjectStoppingCharacterAtPosition" car elle permet de verifier plus finement si le rectangle d'un bloc est en collision avec celui du joueur.
-    return (Glc.map.isStoppingHardBlockCollidingWithEntityRect(nBlock, EntityRect, entity) || Glc.OManager.isStoppingObjectsCollidingWithEntityRect(CharacterBlock, EntityRect, entity, null));
+    return (Glc.map.isStoppingHardBlockCollidingWithEntityRect(nBlock, EntityRect, entity) || Glc.OManager.isStoppingObjectsCollidingWithEntityRect(CharacterBlock, EntityRect, entity, null, excludeBomb));
   }
 
   public ArrayList<BASE_OBJECT> getTouchingObjectsWithCharacterRect(int block, Rect rect) {
@@ -242,30 +315,17 @@ public class CHARACTERS_MANAGER {
     return lst;
   }
 
-  /*
-  public ArrayList<BASE_CHARACTER> getTouchingCharactersFromRect(int block, Rect rect) {
-   ArrayList<BASE_CHARACTER> lst = new ArrayList<BASE_CHARACTER>();
-   for (int yDecal = -1; yDecal <=1; yDecal++) {
-   for (int xDecal = -1; xDecal <=1; xDecal++) {
-   int nBlockDecal =  block + (yDecal * gMapBlockWidth) + xDecal;
-   for (BASE_CHARACTER o : CharacterMapMatrix.get(nBlockDecal)) {
-   if (isRectCollision(rect, o.hitBox)) {
-   lst.add(o);
-   }
-   }
-   }
-   }
-   return lst;
-   }
-   */
+  public void levelEndingEvent(LEVEL_END_EVENT event) {
+    Glc.LevelEndingEvent(event);
+  }
 }
-
-
-
 
 public class BASE_CHARACTER {
   protected EnumMap<CHARACTER_ACTION, SpriteAnimation> lAnimation = new EnumMap<CHARACTER_ACTION, SpriteAnimation>(CHARACTER_ACTION.class);
   protected CHARACTER_ACTION previousAction = CHARACTER_ACTION.LOOK_FRONT_WAIT; // par défaut
+  protected int spawnBlockPosition;
+  public boolean isSpriteTinted;
+  protected SPRITE_TINT spriteTint = SPRITE_TINT.WHITE;
   protected int frameCounter = 0;
   protected ENTITY_TYPE entityType;
   public int  blockPosition;
@@ -278,25 +338,29 @@ public class BASE_CHARACTER {
   public CHARACTERS_MANAGER controller;
   protected  ArrayList<BASE_OBJECT> ActiveDroppedBombs;// liste des bombes droppées
   protected int flamePower;
+  protected boolean walkOverBomb;
   protected int DropBombCapacity;
   private int destructCountDown = -1;
-
   protected int IA_IdleCount = 60; // variable utilisée pour la gestion de l'IA
   protected DIRECTION IA_direction = DIRECTION.NEUTRAL;
-  
-  public BASE_CHARACTER(int blockPosition) {
+  protected int invulnerabilityDuration = 0;
+  private int RedDyingFlash = 0;
+  private String ID;
+
+  public BASE_CHARACTER(int blockPosition, String ID) {
     // on construit les animations
+    this.ID = ID;
     this.blockPosition = blockPosition;
-
+    spawnBlockPosition = blockPosition;
     ActiveDroppedBombs = new ArrayList<BASE_OBJECT>();
-
     rect = new Rect((blockPosition % gMapBlockWidth) * gpxMapTileSize, floor(blockPosition / gMapBlockWidth) * gpxMapTileSize, gpxMapTileSize, gpxMapTileSize);
     // this.hitBox = new Rect(rect.x+6, rect.y+6, rect.w-12, rect.h-12);// le rectangle de collision est toujours plus petit..
     walkSpeed = 1.0;
     bControl = true;
     IsKicking = false;
     kickingAbility = false;
-
+    walkOverBomb = false;
+    isSpriteTinted = false;
     spriteToRender = new Sprite(1, rect.x, rect.y, 0); // default..
     for (CHARACTER_ACTION Action : CHARACTER_ACTION.values()) {
       SpriteAnimation sa = DefineSpriteAnimationFromAction(Action);
@@ -319,13 +383,34 @@ public class BASE_CHARACTER {
         destruct();
       }
     }
+
+    if (invulnerabilityDuration>0) {
+      invulnerabilityDuration--;
+      if (invulnerabilityDuration % 15 > 7) { /// clignotement du sprite...
+        isSpriteTinted = true;
+      } else {
+        isSpriteTinted = false;
+      }
+    }
+
+    if (RedDyingFlash>0) {
+      RedDyingFlash--;
+      if (RedDyingFlash % 15 > 7) { /// clignotement du sprite...
+        isSpriteTinted = true;
+      } else {
+        isSpriteTinted = false;
+      }
+    }
   }
 
   public void SetDectructCountDown(int destructCountDown) {
     this.destructCountDown = destructCountDown;
+    RedDyingFlash = 120;
+    spriteTint = SPRITE_TINT.RED;
   }
 
   public void destruct() {
+    controller.AddDeadCharacterReadyForRespawn(spawnBlockPosition, ID);
     controller.AppendCharacterForRemoval(blockPosition, this);
     controller = null;
   }
@@ -375,7 +460,7 @@ public class BASE_CHARACTER {
     updateSpriteAnimationFrame(Action);
   }
 
-  void DeleteBombRef(BASE_OBJECT o) {
+  void DeleteBombRef(BASE_OBJECT o) { // appelé par l'objet bomb lorsqu'une bombe droppée est supprimé de la map.
     ActiveDroppedBombs.remove(o);
   }
 
@@ -397,12 +482,19 @@ public class BASE_CHARACTER {
     }
     // on droppe une bombe :)
 
-    int duration = 180;
+    int duration = 160;
     BASE_OBJECT bomb = new BOMB(blockPosition, this, flamePower, duration);
     ActiveDroppedBombs.add(bomb); // on retient la référence de cette bombe..
     controller.addObject(blockPosition, bomb);
-    playSFX(SOUND_ID.BOMB_DROP1, 0.5);
+    gSound.playSFX(SOUND_ID.BOMB_DROP1, 0.5);
   }
+
+  //
+  protected void SetInvulnerability(int duration) {
+    invulnerabilityDuration = duration;
+    spriteTint = SPRITE_TINT.WHITE; // les sprites sont tintés en blanc lorsqu'invincible
+  }
+
 
   //-----------------------------------------------------------------------------------------------------------------------------
   protected void checkMapMatrixPermutation() {
@@ -415,7 +507,7 @@ public class BASE_CHARACTER {
 
   protected boolean tryRightStep() {
     Rect testRect = rect.move(DIRECTION.RIGHT, walkSpeed); // position a tester : on avance vers la droite
-    if (!controller.isStoppingBlockOrObjectCollidingWithEntityRect(blockPosition, blockPosition+1, testRect, entityType)) { // si pas de block qui bloque dans la direction voulue (droite)
+    if (!controller.isStoppingBlockOrObjectCollidingWithEntityRect(blockPosition, blockPosition+1, testRect, entityType, walkOverBomb)) { // si pas de block qui bloque dans la direction voulue (droite)
       rect = testRect; // on ecrase vu que le test a reussi//rect.x +=walkSpeed; // on avance vers la droite
       float yDiff = controller.getYdifference(blockPosition+1, rect.y); // est ce qu'on est tout de même bien dans l'axe du couloir ?
       if (yDiff < 0) { // si on est trop vers le bas
@@ -441,6 +533,10 @@ public class BASE_CHARACTER {
       updateSpriteAnimationFrame(CHARACTER_ACTION.LOOK_RIGHT_WALK); // on mets a jour l'animation..
       return true; // action de déplacement réussi
     } else { //--------------------------------------------  le déplacement vers la droite est bloquée : on essaye de contourner..
+      float xDiff =  getCoordinateFromBlockPosition(blockPosition).x - rect.x;
+      if (xDiff < walkSpeed) {
+        rect.x += xDiff;
+      }
       float yDiff = controller.getYdifference(blockPosition+1, rect.y); // est ce que l'on est plus vers le haut ou le bas du bloc
       if (yDiff < 0) { // on est plus vers le bas
         if (!controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition + gMapBlockWidth, entityType) 
@@ -492,7 +588,7 @@ public class BASE_CHARACTER {
         if (object.kickable) {
           //if (object.category == OBJECT_CATEGORY.BOMB){
 
-          if (object.tryKicking(direction, force)) playSFX(SOUND_ID.ZOL, 1);
+          if (object.tryKicking(direction, force)) gSound.playSFX(SOUND_ID.ZOL, 1);
         }
       }
     }
@@ -504,7 +600,7 @@ public class BASE_CHARACTER {
   protected boolean tryLeftStep() {
     // voir la fonction tryLeftRight pour plus de description.. cette methode est relativement similaire
     Rect testRect = rect.move(DIRECTION.LEFT, walkSpeed); // position a tester : on avance vers la droite
-    if (!controller.isStoppingBlockOrObjectCollidingWithEntityRect(blockPosition, blockPosition-1, testRect, entityType)) {
+    if (!controller.isStoppingBlockOrObjectCollidingWithEntityRect(blockPosition, blockPosition-1, testRect, entityType, walkOverBomb)) {
       rect = testRect; // TEST réussi on écrase
       float yDiff = controller.getYdifference(blockPosition-1, rect.y);
       if (yDiff < 0) {
@@ -530,6 +626,11 @@ public class BASE_CHARACTER {
       updateSpriteAnimationFrame( CHARACTER_ACTION.LOOK_LEFT_WALK);
       return true;
     } else {
+      float xDiff =  rect.x -  getCoordinateFromBlockPosition(blockPosition).x;
+      if (xDiff < walkSpeed) {
+        rect.x -= xDiff;
+      }
+
       float yDiff = controller.getYdifference(blockPosition-1, rect.y);
       if (yDiff < 0) { // plus bas
         if (!controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition + gMapBlockWidth, entityType) 
@@ -559,7 +660,7 @@ public class BASE_CHARACTER {
   protected boolean tryUpStep() {
     // voir la fonction tryLeftRight pour plus de description.. cette methode est relativement similaire
     Rect testRect = rect.move(DIRECTION.UP, walkSpeed); // position a tester : on avance vers la droite
-    if ( !controller.isStoppingBlockOrObjectCollidingWithEntityRect(blockPosition, blockPosition- gMapBlockWidth, testRect, entityType)) {
+    if ( !controller.isStoppingBlockOrObjectCollidingWithEntityRect(blockPosition, blockPosition- gMapBlockWidth, testRect, entityType, walkOverBomb)) {
       rect = testRect; // TEST réussi on écrase
       float xDiff = controller.getXdifference(blockPosition- gMapBlockWidth, rect.x);
       if (xDiff > 0) {
@@ -585,6 +686,11 @@ public class BASE_CHARACTER {
       updateSpriteAnimationFrame( CHARACTER_ACTION.LOOK_UP_WALK);
       return true;
     } else {
+      float yDiff =  rect.y -  getCoordinateFromBlockPosition(blockPosition).y;
+      if (yDiff < walkSpeed) {
+        rect.y -= yDiff;
+      }
+
       float xDiff = controller.getXdifference(blockPosition- gMapBlockWidth, rect.x);
       if (xDiff > 0) { 
         if (!controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition - 1, entityType) 
@@ -614,7 +720,7 @@ public class BASE_CHARACTER {
   protected boolean tryDownStep() {
     // voir la fonction tryLeftRight pour plus de description.. cette methode est relativement similaire
     Rect testRect = rect.move(DIRECTION.DOWN, walkSpeed); // position a tester : on avance vers la droite
-    if (!controller.isStoppingBlockOrObjectCollidingWithEntityRect(blockPosition, blockPosition +  gMapBlockWidth, testRect, entityType)) {
+    if (!controller.isStoppingBlockOrObjectCollidingWithEntityRect(blockPosition, blockPosition +  gMapBlockWidth, testRect, entityType, walkOverBomb)) {
       rect = testRect; // TEST réussi on écrase
       float xDiff = controller.getXdifference(blockPosition+ gMapBlockWidth, rect.x);
       if (xDiff > 0) {
@@ -640,6 +746,12 @@ public class BASE_CHARACTER {
       updateSpriteAnimationFrame( CHARACTER_ACTION.LOOK_DOWN_WALK);
       return true;
     } else {
+      float yDiff =  getCoordinateFromBlockPosition(blockPosition).y - rect.y  ; //
+      if (yDiff < walkSpeed) {
+        rect.y += yDiff;
+      }
+
+
       float xDiff = controller.getXdifference(blockPosition+ gMapBlockWidth, rect.x);
       if (xDiff > 0) { 
         if (!controller.IsBlockOrObjectStoppingCharacterAtPosition(blockPosition - 1, entityType) 
@@ -666,15 +778,17 @@ public class BASE_CHARACTER {
     return false;
   }
 
-  protected boolean isTouchingDeadlyItems() {
+  protected boolean isTouchingDeadlyObjects() {
     for (BASE_OBJECT o : controller.getTouchingObjectsWithCharacterRect(blockPosition, rect)) {
       switch (o.category) {
       case DEADLY :
         return true;
-
       case EXIT_DOOR:
-        updateSpriteAnimationFrame(CHARACTER_ACTION.VICTORY);
-        bControl = false;
+        if (entityType == ENTITY_TYPE.PLAYER) {
+          updateSpriteAnimationFrame(CHARACTER_ACTION.VICTORY);
+          bControl = false;
+          controller.levelEndingEvent(LEVEL_END_EVENT.DOOR_EXITED);
+        }
         break;
       case ITEM :
         switch (o.itemType) {
@@ -702,7 +816,7 @@ public class BASE_CHARACTER {
           }
           break;
         case "LIFE_UP":
-          playSFX(SOUND_ID.ONE_UP, 1);
+          gSound.playSFX(SOUND_ID.ONE_UP, 1);
           break;
         case "KICK":
           kickingAbility = true;
@@ -712,7 +826,7 @@ public class BASE_CHARACTER {
           break;
         }
 
-        playSFX(SOUND_ID.ITEM_GET, 1);
+        gSound.playSFX(SOUND_ID.ITEM_GET, 1);
         controller.RemoveObject(o.block, o);
 
         break;
@@ -789,6 +903,8 @@ public class BASE_CHARACTER {
   }
 
   public Sprite GetSpriteToRender() {
+    if (isSpriteTinted) {
+    }
     return spriteToRender;
   }
 }
