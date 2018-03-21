@@ -13,3 +13,8 @@ Ce projet n'a pas de vocation commercial mais purement éducatif.
 
 
 un PDF de soutenance simplifié a également été mis en ligne.
+
+video de demonstration :  
+
+https://www.youtube.com/watch?v=NTzb5stG25Y
+
